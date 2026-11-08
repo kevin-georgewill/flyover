@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  title: Flyover API
+  version: 1.0.0
+  description: Foundation MVP API contract. See API.md for complete route and workflow details.
+servers:
+  - url: http://localhost:4000/api/v1
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      summary: API and database health
+      responses:
+        '200': { description: Healthy }
+  /auth/register:
+    post:
+      security: []
+      summary: Register affiliate or business
+      responses:
+        '201': { description: Account created }
+        '400': { description: Validation error }
+  /auth/login:
+    post:
+      security: []
+      summary: Login
+      responses:
+        '200': { description: Access and refresh tokens }
+        '401': { description: Invalid credentials }
+  /auth/refresh:
+    post:
+      security: []
+      summary: Rotate refresh token
+      responses:
+        '200': { description: New tokens }
+  /auth/me:
+    get:
+      summary: Current user and profile
+      responses:
+        '200': { description: User profile }
+  /marketplace/campaigns:
+    get:
+      summary: Browse approved campaigns
+      responses:
+        '200': { description: Campaign list }
+  /campaigns:
+    post:
+      summary: Create a business campaign
+      responses:
+        '201': { description: Draft campaign }
+  /campaigns/{id}/apply:
+    post:
+      summary: Join or apply to a campaign
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string } }
+      responses:
+        '201': { description: Application and/or referral link }
+  /r/{code}:
+    get:
+      security: []
+      summary: Record click and redirect
+      parameters:
+        - { in: path, name: code, required: true, schema: { type: string } }
+      responses:
+        '302': { description: Redirect }
+  /businesses/conversions:
+    post:
+      summary: Submit a manual conversion
+      responses:
+        '201': { description: Pending conversion }
+  /wallet:
+    get:
+      summary: Wallet balances and ledger
+      responses:
+        '200': { description: Wallet }
+  /withdrawals:
+    post:
+      summary: Request withdrawal
+      responses:
+        '201': { description: Withdrawal request }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
