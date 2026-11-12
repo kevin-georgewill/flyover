@@ -1,8 +1,5 @@
-node_modules/
-dist/
-.env
-coverage/
-*.log
-.DS_Store
-.env.example
-
+node_modules
+.next
+.env.local
+*.tsbuildinfo
+next-env.d.ts
