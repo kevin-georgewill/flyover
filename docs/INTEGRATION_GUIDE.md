@@ -71,3 +71,57 @@ Error: `{ "success": false, "error": { "code": "...", "message": "..." } }`
 - Campaigns are discoverable only after admin approval.
 - Treat monetary values as display values; do not use JS floating point for financial calculations.
 - `GET /r/:code` is a redirect endpoint, not a JSON API call. Open it as a navigation URL.
+
+
+## Swagger-first integration
+Interactive documentation: `http://localhost:4000/docs`  
+OpenAPI YAML: `http://localhost:4000/docs/openapi.yaml`
+
+Use Swagger as the canonical contract for request bodies, enums, path/query parameters, authentication schemes and response envelopes. The backend developer updates `docs/openapi.yaml` in the same change as every route or schema change.
+
+## Phase 11 workflows
+### Coupons
+1. Business issues an affiliate-specific coupon with `POST /campaigns/:id/coupons`.
+2. Business and affiliate retrieve coupons from their respective list endpoints.
+3. Business submits a conversion using `couponCode`, `referralCode`, or both.
+4. Business approves/rejects the pending conversion.
+5. Coupon redemption moves from RESERVED to CONFIRMED or RELEASED.
+
+### Creators
+1. Affiliate creates a creator profile using `PUT /creators/me`.
+2. Business searches creators using `GET /creators`.
+3. Business creates a campaign with `compensationModel` set to `FIXED_FEE` or `HYBRID`.
+4. Affiliate joins/applies using the existing campaign participation flow.
+5. Affiliate submits deliverables; business reviews them.
+6. Once required deliverables are approved, creator payment status becomes APPROVED. Business records PROCESSING/PAID/FAILED manually.
+
+## Phase 12 workflows
+### Private programmes
+1. Business creates a programme and registration-page fields.
+2. Business activates the programme.
+3. Prospective affiliates use the public programme page and registration endpoint, or existing affiliates apply.
+4. Business approves membership.
+5. Business creates a campaign with `access: PRIVATE` and the programme ID.
+6. Only approved programme members can discover/join that campaign.
+
+### Integrations
+1. Configure `API_PUBLIC_URL` and `INTEGRATION_ENCRYPTION_KEY` on the backend.
+2. Business admin creates an integration and supplies its provider webhook secret.
+3. Business admin creates a one-time integration API key if external conversion reporting is required.
+4. Configure the provider webhook to call `/api/v1/webhooks/:id` with its signing header.
+5. For tracking, install the returned tracking snippet on the merchant website.
+6. Monitor event status using the business integration events endpoint and retry failed verified webhooks.
+
+Do not put provider secrets, integration API keys or the integration encryption key in frontend environment variables. The API key is returned once and should be held by the external server that reports conversions.
+
+## Business team roles
+- OWNER: business account owner.
+- ADMIN: full business administration, team and integration configuration.
+- MANAGER: operational write access for campaigns, programmes and CRM.
+- ANALYST: read-only business access.
+
+The frontend should hide actions that the current member role cannot perform, but backend authorization remains authoritative.
+
+
+### Selecting a business context
+Business users who own or belong to multiple businesses should send `X-Business-Id: <business-profile-id>` on business-scoped requests. The backend verifies that the caller owns or is an active member of the selected business and enforces the member role. If omitted, the owner's business is selected first, otherwise the user's first active membership is used.

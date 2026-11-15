@@ -1,87 +1,5682 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
   title: Flyover API
   version: 1.0.0
-  description: Foundation MVP API contract. See API.md for complete route and workflow details.
+  description: MVP API contract derived from Express routes and Zod validation. All responses use success/data or
+    success/error envelopes. Monetary values are JSON numbers; manual payouts do not initiate bank transfers. Phase
+    11/12 APIs cover coupons, creators, private affiliate programmes, signed integrations, tracking, CRM and advanced
+    analytics.
 servers:
-  - url: http://localhost:4000/api/v1
+- url: http://localhost:4000/api/v1
 security:
-  - bearerAuth: []
+- bearerAuth: []
+tags:
+- name: Health
+- name: Authentication
+- name: Profiles
+- name: Products
+- name: Campaigns
+- name: Marketplace
+- name: Referrals
+- name: Conversions
+- name: Wallet
+- name: Withdrawals
+- name: Administration
+- name: Notifications
+- name: Analytics
+- name: Coupons
+  description: Affiliate coupon issuance, attribution and redemption management.
+- name: Creators
+  description: Creator profiles, discovery, deliverables and fixed-fee payment status.
+- name: Affiliate Programmes
+  description: Private affiliate programmes and branded registration pages.
+- name: Business Teams
+  description: Business membership and enterprise role management.
+- name: Integrations
+  description: External conversion reporting, signed webhooks, tracking and integration credentials.
+- name: Tracking
+  description: First/last-click tracking SDK and attribution touch collection.
+- name: CRM
+  description: Business affiliate relationship management.
+- name: Preferences
+  description: Notification preferences.
+- name: Advanced Analytics
+  description: Campaign and affiliate performance reporting.
 paths:
   /health:
     get:
-      security: []
+      tags:
+      - Health
       summary: API and database health
+      operationId: GET_health
       responses:
-        '200': { description: Healthy }
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
   /auth/register:
     post:
-      security: []
+      tags:
+      - Authentication
       summary: Register affiliate or business
+      operationId: POST_auth_register
       responses:
-        '201': { description: Account created }
-        '400': { description: Validation error }
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Register'
   /auth/login:
     post:
-      security: []
-      summary: Login
+      tags:
+      - Authentication
+      summary: Login and issue tokens
+      operationId: POST_auth_login
       responses:
-        '200': { description: Access and refresh tokens }
-        '401': { description: Invalid credentials }
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
   /auth/refresh:
     post:
-      security: []
+      tags:
+      - Authentication
       summary: Rotate refresh token
+      operationId: POST_auth_refresh
       responses:
-        '200': { description: New tokens }
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Refresh'
+  /auth/logout:
+    post:
+      tags:
+      - Authentication
+      summary: Revoke refresh token
+      operationId: POST_auth_logout
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
   /auth/me:
     get:
-      summary: Current user and profile
+      tags:
+      - Authentication
+      summary: Current user and profiles
+      operationId: GET_auth_me
       responses:
-        '200': { description: User profile }
-  /marketplace/campaigns:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /affiliates/me:
+    patch:
+      tags:
+      - Profiles
+      summary: Update affiliate profile
+      operationId: PATCH_affiliates_me
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AffiliateProfileUpdate'
+  /businesses/me:
+    patch:
+      tags:
+      - Profiles
+      summary: Update business profile
+      operationId: PATCH_businesses_me
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessProfileUpdate'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+  /businesses/verification:
+    post:
+      tags:
+      - Profiles
+      summary: Submit business verification
+      operationId: POST_businesses_verification
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessVerification'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+  /products:
+    post:
+      tags:
+      - Products
+      summary: Create product (approved business)
+      operationId: POST_products
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
     get:
-      summary: Browse approved campaigns
+      tags:
+      - Products
+      summary: List own products
+      operationId: GET_products
       responses:
-        '200': { description: Campaign list }
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
   /campaigns:
     post:
-      summary: Create a business campaign
+      tags:
+      - Campaigns
+      summary: Create draft campaign (approved business)
+      operationId: POST_campaigns
       responses:
-        '201': { description: Draft campaign }
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignCreate'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+  /campaigns/mine:
+    get:
+      tags:
+      - Campaigns
+      summary: List own campaigns
+      operationId: GET_campaigns_mine
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+  /campaigns/{id}:
+    patch:
+      tags:
+      - Campaigns
+      summary: Edit draft or rejected campaign
+      operationId: PATCH_campaigns_id
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignUpdate'
+    get:
+      tags:
+      - Campaigns
+      summary: Get approved campaign details
+      operationId: GET_campaigns_id
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /campaigns/{id}/submit:
+    post:
+      tags:
+      - Campaigns
+      summary: Submit campaign for moderation
+      operationId: POST_campaigns_id_submit
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /marketplace/campaigns:
+    get:
+      tags:
+      - Marketplace
+      summary: Browse approved campaigns
+      operationId: GET_marketplace_campaigns
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: category
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: country
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: action
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - CPS
+          - CPL
+          - CPR
+          - CPA
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 20
   /campaigns/{id}/apply:
     post:
-      summary: Join or apply to a campaign
-      parameters:
-        - { in: path, name: id, required: true, schema: { type: string } }
+      tags:
+      - Marketplace
+      summary: Join open campaign or apply for approval
+      operationId: POST_campaigns_id_apply
       responses:
-        '201': { description: Application and/or referral link }
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignApply'
+  /businesses/campaigns/{id}/applications:
+    get:
+      tags:
+      - Campaigns
+      summary: List campaign applications
+      operationId: GET_businesses_campaigns_id_applications
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+  /businesses/applications/{id}:
+    patch:
+      tags:
+      - Campaigns
+      summary: Review campaign application
+      operationId: PATCH_businesses_applications_id
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationReview'
+  /affiliates/referrals:
+    get:
+      tags:
+      - Referrals
+      summary: List own referral links and click counts
+      operationId: GET_affiliates_referrals
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /r/{code}:
     get:
-      security: []
+      tags:
+      - Referrals
       summary: Record click and redirect
-      parameters:
-        - { in: path, name: code, required: true, schema: { type: string } }
+      operationId: GET_r_code
       responses:
-        '302': { description: Redirect }
+        '302':
+          description: Redirect to campaign destination
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: source
+        in: query
+        required: false
+        schema:
+          type: string
   /businesses/conversions:
     post:
-      summary: Submit a manual conversion
+      tags:
+      - Conversions
+      summary: Submit manual conversion
+      operationId: POST_businesses_conversions
       responses:
-        '201': { description: Pending conversion }
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversionCreate'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+    get:
+      tags:
+      - Conversions
+      summary: List own conversions
+      operationId: GET_businesses_conversions
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - REVERSED
+          - DISPUTED
+      - $ref: '#/components/parameters/BusinessContext'
+  /businesses/conversions/{id}/review:
+    patch:
+      tags:
+      - Conversions
+      summary: Approve or reject pending conversion
+      operationId: PATCH_businesses_conversions_id_review
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConversionReview'
+  /admin/businesses:
+    get:
+      tags:
+      - Administration
+      summary: List businesses
+      operationId: GET_admin_businesses
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - SUSPENDED
+  /admin/businesses/{id}/review:
+    patch:
+      tags:
+      - Administration
+      summary: Review business verification
+      operationId: PATCH_admin_businesses_id_review
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessReview'
+  /admin/campaigns:
+    get:
+      tags:
+      - Administration
+      summary: List campaigns
+      operationId: GET_admin_campaigns
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - DRAFT
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - SUSPENDED
+          - ENDED
+  /admin/campaigns/{id}/review:
+    patch:
+      tags:
+      - Administration
+      summary: Approve, reject or suspend campaign
+      operationId: PATCH_admin_campaigns_id_review
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignReview'
+  /admin/users:
+    get:
+      tags:
+      - Administration
+      summary: List users
+      operationId: GET_admin_users
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/users/{id}/status:
+    patch:
+      tags:
+      - Administration
+      summary: Activate or suspend user
+      operationId: PATCH_admin_users_id_status
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserStatus'
+  /admin/commissions/{id}/release:
+    post:
+      tags:
+      - Administration
+      summary: Release matured pending commission
+      operationId: POST_admin_commissions_id_release
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
   /wallet:
     get:
+      tags:
+      - Wallet
       summary: Wallet balances and ledger
+      operationId: GET_wallet
       responses:
-        '200': { description: Wallet }
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /withdrawals:
     post:
+      tags:
+      - Withdrawals
       summary: Request withdrawal
+      operationId: POST_withdrawals
       responses:
-        '201': { description: Withdrawal request }
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawalCreate'
+    get:
+      tags:
+      - Withdrawals
+      summary: List own withdrawals
+      operationId: GET_withdrawals
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /admin/withdrawals:
+    get:
+      tags:
+      - Administration
+      summary: List withdrawals
+      operationId: GET_admin_withdrawals
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING
+          - APPROVED
+          - REJECTED
+          - PROCESSING
+          - PAID
+          - FAILED
+  /admin/withdrawals/{id}/review:
+    patch:
+      tags:
+      - Administration
+      summary: Update manual withdrawal status
+      operationId: PATCH_admin_withdrawals_id_review
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawalReview'
+  /notifications:
+    get:
+      tags:
+      - Notifications
+      summary: List own notifications
+      operationId: GET_notifications
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/{id}/read:
+    patch:
+      tags:
+      - Notifications
+      summary: Mark own notification read
+      operationId: PATCH_notifications_id_read
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+  /analytics/affiliate:
+    get:
+      tags:
+      - Analytics
+      summary: Affiliate aggregate metrics
+      operationId: GET_analytics_affiliate
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /analytics/business:
+    get:
+      tags:
+      - Analytics
+      summary: Business aggregate metrics
+      operationId: GET_analytics_business
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+  /campaigns/{id}/coupons:
+    post:
+      tags:
+      - Coupons
+      summary: Issue a coupon for an approved campaign affiliate
+      operationId: POST_campaigns_id_coupons
+      description: Business owner/admin/manager. Affiliate must have an approved campaign application. Coupon code
+        is normalized to uppercase.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - Coupons
+      summary: List coupons issued for a campaign
+      operationId: GET_campaigns_id_coupons
+      description: List coupons issued for a campaign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /affiliates/coupons:
+    get:
+      tags:
+      - Coupons
+      summary: List coupons assigned to the authenticated affiliate
+      operationId: GET_affiliates_coupons
+      description: List coupons assigned to the authenticated affiliate
+      parameters: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /coupons/{id}:
+    patch:
+      tags:
+      - Coupons
+      summary: Update coupon availability, validity or redemption cap
+      operationId: PATCH_coupons_id
+      description: Update coupon availability, validity or redemption cap
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CouponUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /creators/me:
+    get:
+      tags:
+      - Creators
+      summary: Get the authenticated affiliate's creator profile
+      operationId: GET_creators_me
+      description: Get the authenticated affiliate's creator profile
+      parameters: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      tags:
+      - Creators
+      summary: Create or update creator profile
+      operationId: PUT_creators_me
+      description: Create or update creator profile
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatorProfileUpsert'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /creators:
+    get:
+      tags:
+      - Creators
+      summary: Discover creators by niche, location and audience
+      operationId: GET_creators
+      description: Discover creators by niche, location and audience
+      parameters:
+      - name: niche
+        in: query
+        required: false
+        description: niche
+        schema:
+          type: string
+      - name: country
+        in: query
+        required: false
+        description: country
+        schema:
+          type: string
+      - name: city
+        in: query
+        required: false
+        description: city
+        schema:
+          type: string
+      - name: minAudience
+        in: query
+        required: false
+        description: minAudience
+        schema:
+          type: integer
+      - name: maxAudience
+        in: query
+        required: false
+        description: maxAudience
+        schema:
+          type: integer
+      - name: minEngagement
+        in: query
+        required: false
+        description: minEngagement
+        schema:
+          type: number
+      - name: page
+        in: query
+        required: false
+        description: page
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        required: false
+        description: limit
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /creators/{id}:
+    get:
+      tags:
+      - Creators
+      summary: Get a public creator profile
+      operationId: GET_creators_id
+      description: Get a public creator profile
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /creator-campaigns/{campaignId}/deliverables:
+    post:
+      tags:
+      - Creators
+      summary: Submit a creator campaign deliverable
+      operationId: POST_creator_campaigns_campaignId_deliverables
+      description: Submit a creator campaign deliverable
+      parameters:
+      - name: campaignId
+        in: path
+        required: true
+        description: campaignId identifier
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatorDeliverableCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - Creators
+      summary: List the authenticated creator's deliverables for a campaign
+      operationId: GET_creator_campaigns_campaignId_deliverables
+      description: List the authenticated creator's deliverables for a campaign
+      parameters:
+      - name: campaignId
+        in: path
+        required: true
+        description: campaignId identifier
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /creator-campaigns/{campaignId}/deliverables/{id}:
+    patch:
+      tags:
+      - Creators
+      summary: Resubmit a deliverable after revision request
+      operationId: PATCH_creator_campaigns_campaignId_deliverables_id
+      description: Resubmit a deliverable after revision request
+      parameters:
+      - name: campaignId
+        in: path
+        required: true
+        description: campaignId identifier
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatorDeliverableUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/campaigns/{id}/deliverables:
+    get:
+      tags:
+      - Creators
+      summary: List deliverables submitted to a business campaign
+      operationId: GET_businesses_campaigns_id_deliverables
+      description: List deliverables submitted to a business campaign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/deliverables/{id}/review:
+    patch:
+      tags:
+      - Creators
+      summary: Review a creator deliverable
+      operationId: PATCH_businesses_deliverables_id_review
+      description: Review a creator deliverable
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatorDeliverableReview'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/campaigns/{id}/creator-payments:
+    get:
+      tags:
+      - Creators
+      summary: List creator payment records for a campaign
+      operationId: GET_businesses_campaigns_id_creator_payments
+      description: List creator payment records for a campaign
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /affiliates/creator-payments:
+    get:
+      tags:
+      - Creators
+      summary: List creator payments for the authenticated affiliate
+      operationId: GET_affiliates_creator_payments
+      description: List creator payments for the authenticated affiliate
+      parameters: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/creator-payments/{id}:
+    patch:
+      tags:
+      - Creators
+      summary: Update creator payment processing status
+      operationId: PATCH_businesses_creator_payments_id
+      description: Business admin/owner records manual payment status. This endpoint does not initiate a bank transfer.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatorPaymentReview'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/programs:
+    post:
+      tags:
+      - Affiliate Programmes
+      summary: Create a private affiliate programme and registration page
+      operationId: POST_businesses_programs
+      description: Create a private affiliate programme and registration page
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AffiliateProgramCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - Affiliate Programmes
+      summary: List the business's affiliate programmes
+      operationId: GET_businesses_programs
+      description: List the business's affiliate programmes
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/programs/{id}:
+    patch:
+      tags:
+      - Affiliate Programmes
+      summary: Update programme details, page branding or status
+      operationId: PATCH_businesses_programs_id
+      description: Update programme details, page branding or status
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AffiliateProgramUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /programs/{slug}:
+    get:
+      tags:
+      - Affiliate Programmes
+      summary: Get a public affiliate programme registration page
+      operationId: GET_programs_slug
+      description: Get a public affiliate programme registration page
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        description: slug identifier
+        schema:
+          type: string
+      security: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /programs/{slug}/register:
+    post:
+      tags:
+      - Affiliate Programmes
+      summary: Register an affiliate through a custom programme page
+      operationId: POST_programs_slug_register
+      description: Register an affiliate through a custom programme page
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        description: slug identifier
+        schema:
+          type: string
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramRegistration'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /programs/{slug}/campaigns:
+    get:
+      tags:
+      - Affiliate Programmes
+      summary: List private campaigns for an approved programme member
+      operationId: GET_programs_slug_campaigns
+      description: List private campaigns for an approved programme member
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        description: slug identifier
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /programs/{slug}/apply:
+    post:
+      tags:
+      - Affiliate Programmes
+      summary: Apply to an active affiliate programme
+      operationId: POST_programs_slug_apply
+      description: Apply to an active affiliate programme
+      parameters:
+      - name: slug
+        in: path
+        required: true
+        description: slug identifier
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramApply'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/programs/{id}/members:
+    get:
+      tags:
+      - Affiliate Programmes
+      summary: List affiliate programme members and applications
+      operationId: GET_businesses_programs_id_members
+      description: List affiliate programme members and applications
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/program-memberships/{id}:
+    patch:
+      tags:
+      - Affiliate Programmes
+      summary: Approve, reject or suspend a programme member
+      operationId: PATCH_businesses_program_memberships_id
+      description: Approve, reject or suspend a programme member
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProgramMembershipReview'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/members:
+    get:
+      tags:
+      - Business Teams
+      summary: List business team members
+      operationId: GET_businesses_members
+      description: List business team members
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+      - Business Teams
+      summary: Add an existing business user to the business team
+      operationId: POST_businesses_members
+      description: Add an existing business user to the business team
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessMemberCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/members/{id}:
+    patch:
+      tags:
+      - Business Teams
+      summary: Change a team member role or deactivate access
+      operationId: PATCH_businesses_members_id
+      description: Change a team member role or deactivate access
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessMemberUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations:
+    post:
+      tags:
+      - Integrations
+      summary: Create an external integration
+      operationId: POST_businesses_integrations
+      description: Business admin/owner. Credentials are encrypted at rest. Tracking integrations require a campaign.
+        Webhook integrations require a signing secret.
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - Integrations
+      summary: List configured external integrations
+      operationId: GET_businesses_integrations
+      description: List configured external integrations
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations/{id}/status:
+    patch:
+      tags:
+      - Integrations
+      summary: Pause, activate or revoke an integration
+      operationId: PATCH_businesses_integrations_id_status
+      description: Pause, activate or revoke an integration
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationStatusUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations/{id}/credentials:
+    patch:
+      tags:
+      - Integrations
+      summary: Rotate an integration webhook signing secret
+      operationId: PATCH_businesses_integrations_id_credentials
+      description: The new secret is encrypted and never returned by the API.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationCredentialsUpdate'
+  /businesses/integrations/{id}/api-keys:
+    post:
+      tags:
+      - Integrations
+      summary: Create an integration API key
+      operationId: POST_businesses_integrations_id_api_keys
+      description: The plaintext API key is returned once. Store it securely.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IntegrationApiKeyCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+      - Integrations
+      summary: List integration API key metadata
+      operationId: GET_businesses_integrations_id_api_keys
+      description: List integration API key metadata
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations/{id}/api-keys/{keyId}:
+    delete:
+      tags:
+      - Integrations
+      summary: Revoke an integration API key
+      operationId: DELETE_businesses_integrations_id_api_keys_keyId
+      description: Revoke an integration API key
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - name: keyId
+        in: path
+        required: true
+        description: keyId identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations/{id}/events:
+    get:
+      tags:
+      - Integrations
+      summary: List recent integration webhook and reporting events
+      operationId: GET_businesses_integrations_id_events
+      description: List recent integration webhook and reporting events
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /integrations/{id}/conversions:
+    post:
+      tags:
+      - Integrations
+      summary: Report a conversion using an integration API key
+      operationId: POST_integrations_id_conversions
+      description: Authenticated with an integration API key. Reported conversions remain pending business review;
+        eventId and campaign/externalReference are idempotency boundaries.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      security:
+      - integrationApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalConversionReport'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /webhooks/{id}:
+    post:
+      tags:
+      - Integrations
+      summary: Receive a signed provider webhook
+      operationId: POST_webhooks_id
+      description: Verify the provider signature using x-flyover-signature (generic HMAC), x-shopify-hmac-sha256,
+        or x-wc-webhook-signature. The event is idempotent.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      security: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Provider-specific webhook payload. The raw request body is signature-verified before
+                processing.
+              additionalProperties: true
+  /tracking.js:
+    get:
+      tags:
+      - Tracking
+      summary: Serve the Flyover tracking SDK
+      operationId: GET_tracking_js
+      description: Serve the Flyover tracking SDK
+      parameters: []
+      security: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/javascript:
+              schema:
+                type: string
+  /tracking/{publicKey}/events:
+    post:
+      tags:
+      - Tracking
+      summary: Record a tracking touch from a configured tracking integration
+      operationId: POST_tracking_publicKey_events
+      description: Record a tracking touch from a configured tracking integration
+      parameters:
+      - name: publicKey
+        in: path
+        required: true
+        description: publicKey identifier
+        schema:
+          type: string
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrackingEvent'
+      responses:
+        '202':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /notifications/preferences:
+    get:
+      tags:
+      - Preferences
+      summary: Get notification preferences
+      operationId: GET_notifications_preferences
+      description: Get notification preferences
+      parameters: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+      - Preferences
+      summary: Update in-app and email notification preferences
+      operationId: PATCH_notifications_preferences
+      description: Update in-app and email notification preferences
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationPreferenceUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/crm/affiliates:
+    get:
+      tags:
+      - CRM
+      summary: List business affiliate CRM records
+      operationId: GET_businesses_crm_affiliates
+      description: List business affiliate CRM records
+      parameters:
+      - name: stage
+        in: query
+        required: false
+        description: stage
+        schema:
+          type: string
+      - name: search
+        in: query
+        required: false
+        description: search
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: false
+        description: page
+        schema:
+          type: integer
+      - name: limit
+        in: query
+        required: false
+        description: limit
+        schema:
+          type: integer
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/crm/affiliates/{affiliateId}:
+    put:
+      tags:
+      - CRM
+      summary: Create or update a business CRM record for an affiliate
+      operationId: PUT_businesses_crm_affiliates_affiliateId
+      description: Create or update a business CRM record for an affiliate
+      parameters:
+      - name: affiliateId
+        in: path
+        required: true
+        description: affiliateId identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmRecordUpdate'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /analytics/business/campaigns:
+    get:
+      tags:
+      - Advanced Analytics
+      summary: Get campaign-level performance analytics
+      operationId: GET_analytics_business_campaigns
+      description: Get campaign-level performance analytics
+      parameters:
+      - name: from
+        in: query
+        required: false
+        description: from
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: false
+        description: to
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /analytics/business/affiliates:
+    get:
+      tags:
+      - Advanced Analytics
+      summary: Get affiliate-level business performance analytics
+      operationId: GET_analytics_business_affiliates
+      description: Get affiliate-level business performance analytics
+      parameters:
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /businesses/integrations/{id}/events/{eventRecordId}/retry:
+    post:
+      tags:
+      - Integrations
+      summary: Retry a previously verified webhook event after a transient failure
+      operationId: POST_businesses_integrations_id_events_eventId_retry
+      description: Retry a previously verified webhook event after a transient failure
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: id identifier
+        schema:
+          type: string
+      - name: eventRecordId
+        in: path
+        required: true
+        description: eventId identifier
+        schema:
+          type: string
+      - $ref: '#/components/parameters/BusinessContext'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Success'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Authentication required or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Insufficient permissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict or invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    integrationApiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: Flyover Integration API Key
+      description: Use an integration API key returned once by POST /businesses/integrations/{id}/api-keys.
+  schemas:
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          required:
+          - code
+          - message
+      required:
+      - success
+      - error
+    Success:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data: {}
+      required:
+      - success
+      - data
+    Register:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          minLength: 10
+          maxLength: 128
+          format: password
+        role:
+          type: string
+          enum:
+          - AFFILIATE
+          - BUSINESS
+      required:
+      - fullName
+      - email
+      - password
+      - role
+      example:
+        fullName: Ada Example
+        email: ada@example.com
+        phone: '+2348000000000'
+        password: long-password-here
+        role: AFFILIATE
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+          minLength: 1
+      required:
+      - email
+      - password
+      example:
+        email: ada@example.com
+        password: long-password-here
+    Refresh:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 20
+      required:
+      - refreshToken
+    Logout:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+      - refreshToken
+    AffiliateProfileUpdate:
+      type: object
+      properties:
+        bio:
+          type: string
+          maxLength: 1000
+        website:
+          type: string
+          description: Valid URL or empty string
+        socialLinks:
+          type: object
+          additionalProperties:
+            type: string
+        promotionalChannels:
+          type: array
+          items:
+            type: string
+        interests:
+          type: array
+          items:
+            type: string
+        audienceSize:
+          type: integer
+          minimum: 0
+        country:
+          type: string
+    BusinessProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        description:
+          type: string
+          maxLength: 2000
+        website:
+          type: string
+          description: Valid URL or empty string
+        country:
+          type: string
+        registrationNumber:
+          type: string
+    BusinessVerification:
+      type: object
+      properties:
+        registrationNumber:
+          type: string
+          minLength: 2
+        verificationNotes:
+          type: string
+          maxLength: 2000
+      required:
+      - registrationNumber
+    ProductCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        description:
+          type: string
+        price:
+          type: number
+          exclusiveMinimum: 0
+        currency: &id002
+          type: string
+          minLength: 3
+          maxLength: 3
+          default: NGN
+        category:
+          type: string
+        imageUrl: &id001
+          type: string
+          format: uri
+        destinationUrl: *id001
+      required:
+      - name
+    CampaignCreate:
+      type: object
+      properties:
+        productId:
+          type: string
+        name:
+          type: string
+          minLength: 3
+        description:
+          type: string
+          minLength: 10
+        instructions:
+          type: string
+        category:
+          type: string
+        country:
+          type: string
+          default: Nigeria
+        action:
+          type: string
+          enum:
+          - CPS
+          - CPL
+          - CPR
+          - CPA
+        commissionType:
+          type: string
+          enum:
+          - PERCENTAGE
+          - FIXED
+        commissionValue:
+          type: number
+          exclusiveMinimum: 0
+          description: Must be <= 100 for percentage commission
+        currency: *id002
+        access:
+          type: string
+          enum:
+          - OPEN
+          - APPROVAL
+          - INVITATION
+          - PRIVATE
+        attributionModel:
+          type: string
+          enum:
+          - FIRST_CLICK
+          - LAST_CLICK
+        attributionDays:
+          type: integer
+          minimum: 1
+          maximum: 90
+          default: 30
+        validationDays:
+          type: integer
+          minimum: 0
+          maximum: 180
+          default: 14
+        startsAt: &id003
+          type: string
+          format: date-time
+        endsAt: *id003
+        destinationUrl: *id001
+        programId:
+          type: string
+          description: Required when access is PRIVATE.
+        compensationModel:
+          type: string
+          enum:
+          - PERFORMANCE
+          - FIXED_FEE
+          - HYBRID
+          default: PERFORMANCE
+        fixedFeeAmount:
+          type: number
+          exclusiveMinimum: 0
+          description: Required for FIXED_FEE and HYBRID campaigns.
+        requiredDeliverables:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 1
+      required:
+      - name
+      - description
+      example:
+        name: Promote SmartTech
+        description: Earn commission on qualifying sales.
+        action: CPS
+        commissionType: PERCENTAGE
+        commissionValue: 10
+        currency: NGN
+        access: OPEN
+        attributionModel: LAST_CLICK
+        attributionDays: 30
+        validationDays: 14
+        destinationUrl: https://merchant.example/product
+      description: PERFORMANCE requires commissionType and commissionValue. FIXED_FEE requires fixedFeeAmount. HYBRID
+        requires both. PRIVATE requires programId.
+    CampaignUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        description:
+          type: string
+          minLength: 10
+        instructions:
+          type: string
+        commissionValue:
+          type: number
+          exclusiveMinimum: 0
+          nullable: true
+        access:
+          type: string
+          enum:
+          - OPEN
+          - APPROVAL
+          - INVITATION
+          - PRIVATE
+        destinationUrl: *id001
+        compensationModel:
+          type: string
+          enum:
+          - PERFORMANCE
+          - FIXED_FEE
+          - HYBRID
+        commissionType:
+          type: string
+          enum:
+          - PERCENTAGE
+          - FIXED
+          nullable: true
+        fixedFeeAmount:
+          type: number
+          exclusiveMinimum: 0
+          nullable: true
+        requiredDeliverables:
+          type: integer
+          minimum: 1
+          maximum: 50
+        programId:
+          type: string
+          nullable: true
+    CampaignApply:
+      type: object
+      properties:
+        message:
+          type: string
+          maxLength: 1000
+      example:
+        message: I would like to promote this campaign.
+    ApplicationReview:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+      required:
+      - status
+    ConversionCreate:
+      type: object
+      properties:
+        referralCode:
+          type: string
+          minLength: 5
+        externalReference:
+          type: string
+          minLength: 2
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency: *id002
+        customerReference:
+          type: string
+        evidenceUrl: *id001
+        convertedAt: *id003
+        couponCode:
+          type: string
+          minLength: 3
+        campaignId:
+          type: string
+          description: Required when attributing by visitorId.
+        visitorId:
+          type: string
+          minLength: 8
+          maxLength: 200
+          description: Used with campaignId to resolve first/last click attribution within the campaign attribution
+            window.
+      required:
+      - externalReference
+      - amount
+      example:
+        couponCode: SAVE10
+        externalReference: ORDER-2026-1001
+        amount: 45000
+        currency: NGN
+        customerReference: CUSTOMER-123
+      description: At least one of referralCode, couponCode, or campaignId plus visitorId is required.
+    ConversionReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        rejectionReason:
+          type: string
+          maxLength: 1000
+          description: Required when rejecting
+      required:
+      - decision
+    BusinessReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+        notes:
+          type: string
+          maxLength: 1000
+      required:
+      - decision
+    CampaignReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+          - SUSPENDED
+        reason:
+          type: string
+          maxLength: 1000
+      required:
+      - decision
+    UserStatus:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+      required:
+      - isActive
+    WithdrawalCreate:
+      type: object
+      properties:
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          description: MVP minimum NGN 5,000; requires available wallet balance
+        bankName:
+          type: string
+          minLength: 2
+        accountName:
+          type: string
+          minLength: 2
+        accountNumber:
+          type: string
+          minLength: 8
+          maxLength: 20
+      required:
+      - amount
+      - bankName
+      - accountName
+      - accountNumber
+      example:
+        amount: 10000
+        bankName: Example Bank
+        accountName: Ada Example
+        accountNumber: 0123456789
+    WithdrawalReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+          - PROCESSING
+          - PAID
+          - FAILED
+        adminNote:
+          type: string
+          maxLength: 1000
+        paymentReference:
+          type: string
+      required:
+      - decision
+      example:
+        decision: PAID
+        paymentReference: BANK-REF-123
+        adminNote: Paid manually
+    CouponCreate:
+      type: object
+      properties:
+        affiliateId: &id005
+          type: string
+        code:
+          type: string
+          minLength: 3
+          maxLength: 40
+          pattern: ^[a-zA-Z0-9_-]+$
+        discountType:
+          type: string
+          enum:
+          - PERCENTAGE
+          - FIXED_AMOUNT
+        discountValue:
+          type: number
+          exclusiveMinimum: 0
+        maxRedemptions:
+          type: integer
+          minimum: 1
+        startsAt: &id004
+          type: string
+          format: date-time
+        expiresAt: *id004
+      required:
+      - affiliateId
+      - code
+      - discountType
+      - discountValue
+      description: Affiliate must have an approved application to the campaign. Percentage discount cannot exceed
+        100%.
+      example:
+        affiliateId: cm_affiliate_id
+        code: SAVE10
+        discountType: PERCENTAGE
+        discountValue: 10
+        maxRedemptions: 100
+        expiresAt: '2027-01-31T23:59:59.000Z'
+    CouponUpdate:
+      type: object
+      properties:
+        isActive:
+          type: boolean
+        maxRedemptions:
+          type: integer
+          minimum: 1
+          nullable: true
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+    CreatorProfileUpsert:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        bio:
+          type: string
+          maxLength: 2000
+        niches:
+          type: array
+          items: *id005
+          maxItems: 30
+        country:
+          type: string
+          default: Nigeria
+        city: *id005
+        languages:
+          type: array
+          items: *id005
+          maxItems: 20
+        portfolioUrl:
+          type: string
+          format: uri
+        mediaKitUrl:
+          type: string
+          format: uri
+        socialProfiles:
+          type: object
+          additionalProperties:
+            type: string
+            format: uri
+        audienceSize:
+          type: integer
+          minimum: 0
+        engagementRate:
+          type: number
+          minimum: 0
+          maximum: 100
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAUSED
+      required:
+      - displayName
+      example:
+        displayName: Ada Creates
+        bio: Lifestyle and technology creator
+        niches:
+        - Technology
+        - Lifestyle
+        country: Nigeria
+        city: Lagos
+        languages:
+        - English
+        portfolioUrl: https://example.com/portfolio
+        audienceSize: 25000
+        engagementRate: 4.8
+    CreatorDeliverableCreate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 2
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 2000
+        assetUrl:
+          type: string
+          format: uri
+        contentType: *id005
+      required:
+      - title
+      - assetUrl
+      example:
+        title: Instagram product review
+        description: 30-60 second video review
+        assetUrl: https://cdn.example.com/deliverables/review.mp4
+        contentType: video/mp4
+    CreatorDeliverableUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 2
+        description: *id005
+        assetUrl:
+          type: string
+          format: uri
+        contentType: *id005
+    CreatorDeliverableReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - IN_REVIEW
+          - APPROVED
+          - REVISION_REQUESTED
+          - REJECTED
+        reviewNotes:
+          type: string
+          maxLength: 2000
+      required:
+      - decision
+      example:
+        decision: REVISION_REQUESTED
+        reviewNotes: Please include the product demonstration in the first 10 seconds.
+    CreatorPaymentReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - PROCESSING
+          - PAID
+          - FAILED
+        paymentReference: *id005
+        paymentProvider: *id005
+        adminNote: *id005
+      required:
+      - decision
+      example:
+        decision: PAID
+        paymentReference: BANK-TRANSFER-REF-1001
+        paymentProvider: Manual bank transfer
+        adminNote: Paid after deliverable approval.
+    AffiliateProgramCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 120
+        slug:
+          type: string
+          pattern: ^[a-z0-9]+(?:-[a-z0-9]+)*$
+        description:
+          type: string
+          maxLength: 3000
+        requiresApproval:
+          type: boolean
+        landingPageTitle:
+          type: string
+          maxLength: 160
+        landingPageDescription:
+          type: string
+          maxLength: 2000
+        brandColor:
+          type: string
+          pattern: ^#[0-9a-fA-F]{6}$
+        customFields:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            properties:
+              key: *id005
+              label: *id005
+              required:
+                type: boolean
+              type:
+                type: string
+                enum:
+                - TEXT
+                - URL
+                - NUMBER
+            required:
+            - key
+            - label
+      required:
+      - name
+      - slug
+      example:
+        name: Flyover Partner Programme
+        slug: flyover-partners
+        description: Private partner programme
+        requiresApproval: true
+        landingPageTitle: Become a Flyover Partner
+        landingPageDescription: Apply to promote our products.
+        brandColor: '#2457C5'
+        customFields:
+        - key: website
+          label: Your website
+          required: true
+          type: URL
+    AffiliateProgramUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+        description: *id005
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - PAUSED
+          - ARCHIVED
+        requiresApproval:
+          type: boolean
+        landingPageTitle: *id005
+        landingPageDescription: *id005
+        brandColor:
+          type: string
+          nullable: true
+        customFields:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    ProgramRegistration:
+      type: object
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+        email:
+          type: string
+          format: email
+        phone: *id005
+        password:
+          type: string
+          minLength: 10
+        answers:
+          type: object
+          additionalProperties:
+            oneOf:
+            - type: string
+            - type: number
+      required:
+      - fullName
+      - email
+      - password
+      example:
+        fullName: Ada Example
+        email: ada@example.com
+        phone: '+2348000000000'
+        password: StrongPassword123!
+        answers:
+          website: https://example.com
+    ProgramApply:
+      type: object
+      properties:
+        answers:
+          type: object
+          additionalProperties:
+            oneOf:
+            - type: string
+            - type: number
+    ProgramMembershipReview:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum:
+          - APPROVED
+          - REJECTED
+          - SUSPENDED
+      required:
+      - decision
+    BusinessMemberCreate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - MANAGER
+          - ANALYST
+      required:
+      - email
+      - role
+      example:
+        email: team@example.com
+        role: MANAGER
+    BusinessMemberUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+          - ADMIN
+          - MANAGER
+          - ANALYST
+        isActive:
+          type: boolean
+    IntegrationCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        kind:
+          type: string
+          enum:
+          - PAYMENT
+          - ECOMMERCE
+          - TRACKING
+          - CONVERSION_REPORTING
+        provider:
+          type: string
+          enum:
+          - GENERIC_HMAC
+          - SHOPIFY
+          - WOOCOMMERCE
+        campaignId: *id005
+        webhookSecret:
+          type: string
+          minLength: 16
+        allowedDomains:
+          type: array
+          items: *id005
+        config:
+          type: object
+          additionalProperties: true
+      required:
+      - name
+      - kind
+      description: Non-tracking integrations require webhookSecret. The secret is encrypted at rest.
+      example:
+        name: Store payment webhook
+        kind: PAYMENT
+        provider: GENERIC_HMAC
+        campaignId: cm_campaign_id
+        webhookSecret: replace-with-provider-secret-min-16
+        allowedDomains:
+        - shop.example.com
+        config:
+          storeId: store-123
+    IntegrationStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - PAUSED
+          - REVOKED
+      required:
+      - status
+    IntegrationApiKeyCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        scopes:
+          type: array
+          items:
+            type: string
+            enum:
+            - conversions:write
+        expiresAt: *id004
+      required:
+      - name
+      example:
+        name: Store conversion reporting
+        scopes:
+        - conversions:write
+        expiresAt: '2027-12-31T23:59:59.000Z'
+    ExternalConversionReport:
+      type: object
+      properties:
+        eventId: *id005
+        campaignId: *id005
+        referralCode: *id005
+        couponCode: *id005
+        externalReference: *id005
+        customerReference: *id005
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          minLength: 3
+          maxLength: 3
+        convertedAt: *id004
+      required:
+      - eventId
+      - externalReference
+      - amount
+      description: At least one of referralCode or couponCode is required. API-key reports remain pending manual
+        review.
+      example:
+        eventId: evt_2026_1001
+        campaignId: cm_campaign_id
+        referralCode: referralCode123
+        externalReference: ORDER-2026-1001
+        amount: 45000
+        currency: NGN
+    TrackingEvent:
+      type: object
+      properties:
+        eventId: *id005
+        eventType:
+          type: string
+          enum:
+          - PAGE_VIEW
+          - CLICK
+          - LANDING
+          - PRODUCT_VIEW
+          - ADD_TO_CART
+          - CHECKOUT
+        visitorId:
+          type: string
+          minLength: 8
+        referralCode: *id005
+        couponCode: *id005
+        source: *id005
+        pageUrl:
+          type: string
+          format: uri
+        referrer: *id005
+      required:
+      - eventId
+      - eventType
+      - visitorId
+      example:
+        eventId: evt_browser_1001
+        eventType: PAGE_VIEW
+        visitorId: visitor-uuid-12345678
+        referralCode: referralCode123
+        pageUrl: https://shop.example.com/product
+    NotificationPreferenceUpdate:
+      type: object
+      properties:
+        inAppEnabled:
+          type: boolean
+        emailEnabled:
+          type: boolean
+        mutedTypes:
+          type: array
+          items:
+            type: string
+            enum:
+            - GENERAL
+            - BUSINESS_VERIFICATION
+            - CAMPAIGN
+            - APPLICATION
+            - CONVERSION
+            - COMMISSION
+            - WITHDRAWAL
+    CrmRecordUpdate:
+      type: object
+      properties:
+        stage:
+          type: string
+          enum:
+          - DISCOVERED
+          - CONTACTED
+          - NEGOTIATING
+          - PARTNER
+          - INACTIVE
+        tags:
+          type: array
+          items: *id005
+          maxItems: 30
+        notes:
+          type: string
+          maxLength: 5000
+        lastContactAt: *id004
+    IntegrationCredentialsUpdate:
+      type: object
+      properties:
+        webhookSecret:
+          type: string
+          minLength: 16
+      required:
+      - webhookSecret
+  parameters:
+    BusinessContext:
+      name: X-Business-Id
+      in: header
+      required: false
+      description: Select a business when the authenticated BUSINESS user owns or belongs to more than one business.
+        The selected business must be accessible to the caller.
+      schema:
+        type: string

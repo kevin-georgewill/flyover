@@ -33,6 +33,7 @@ enum CampaignAccess {
   OPEN
   APPROVAL
   INVITATION
+  PRIVATE
 }
 
 enum CampaignAction {
@@ -45,6 +46,126 @@ enum CampaignAction {
 enum CommissionType {
   PERCENTAGE
   FIXED
+}
+
+enum CouponDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum CouponRedemptionStatus {
+  RESERVED
+  CONFIRMED
+  RELEASED
+}
+
+enum CompensationModel {
+  PERFORMANCE
+  FIXED_FEE
+  HYBRID
+}
+
+enum CreatorProfileStatus {
+  ACTIVE
+  PAUSED
+}
+
+enum CreatorDeliverableStatus {
+  SUBMITTED
+  IN_REVIEW
+  REVISION_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum CreatorPaymentStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+enum AffiliateProgramStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum ProgramMembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum BusinessMemberRole {
+  OWNER
+  ADMIN
+  MANAGER
+  ANALYST
+}
+
+enum IntegrationKind {
+  PAYMENT
+  ECOMMERCE
+  TRACKING
+  CONVERSION_REPORTING
+}
+
+enum IntegrationProvider {
+  GENERIC_HMAC
+  SHOPIFY
+  WOOCOMMERCE
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  PAUSED
+  REVOKED
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum AttributionSource {
+  REFERRAL
+  COUPON
+  REFERRAL_AND_COUPON
+  ATTRIBUTION_WINDOW
+  TRACKING_API
+  WEBHOOK
+}
+
+enum AttributionTouchType {
+  CONVERSION
+  PAGE_VIEW
+  CLICK
+  LANDING
+  PRODUCT_VIEW
+  ADD_TO_CART
+  CHECKOUT
+}
+
+enum CrmStage {
+  DISCOVERED
+  CONTACTED
+  NEGOTIATING
+  PARTNER
+  INACTIVE
 }
 
 enum AttributionModel {
@@ -119,6 +240,8 @@ model User {
   sessions        RefreshSession[]
   notifications   Notification[]
   auditLogs       AuditLog[]        @relation("AuditActor")
+  businessMemberships BusinessMember[]
+  notificationPreference NotificationPreference?
 }
 
 model RefreshSession {
@@ -149,6 +272,13 @@ model AffiliateProfile {
   applications        CampaignApplication[]
   referrals           Referral[]
   conversions         Conversion[]
+  coupons             Coupon[]
+  creatorProfile      CreatorProfile?
+  programMemberships  ProgramMembership[]
+  creatorDeliverables CreatorDeliverable[]
+  creatorPayments     CreatorPayment[]
+  crmRecords          BusinessAffiliateRecord[]
+  attributionTouches  AttributionTouch[]
   commissions         Commission[]
   walletEntries       WalletEntry[]
   withdrawals         Withdrawal[]
@@ -172,6 +302,10 @@ model BusinessProfile {
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   products           Product[]
   campaigns          Campaign[]
+  programs           AffiliateProgram[]
+  members             BusinessMember[]
+  integrations        ExternalIntegration[]
+  crmRecords          BusinessAffiliateRecord[]
 }
 
 model Product {
@@ -203,8 +337,12 @@ model Campaign {
   category         String?
   country          String                @default("Nigeria")
   action           CampaignAction        @default(CPS)
-  commissionType   CommissionType
-  commissionValue  Decimal               @db.Decimal(14, 2)
+  compensationModel CompensationModel    @default(PERFORMANCE)
+  commissionType   CommissionType?
+  commissionValue  Decimal?              @db.Decimal(14, 2)
+  fixedFeeAmount   Decimal?              @db.Decimal(14, 2)
+  requiredDeliverables Int                @default(1)
+  programId        String?
   currency         String                @default("NGN")
   access           CampaignAccess        @default(OPEN)
   attributionModel AttributionModel      @default(LAST_CLICK)
@@ -224,7 +362,14 @@ model Campaign {
   referrals        Referral[]
   conversions      Conversion[]
   commissions      Commission[]
+  coupons          Coupon[]
+  program          AffiliateProgram?     @relation(fields: [programId], references: [id], onDelete: SetNull)
+  creatorDeliverables CreatorDeliverable[]
+  creatorPayments  CreatorPayment[]
+  attributionTouches AttributionTouch[]
+  integrations      ExternalIntegration[]
 
+  @@index([programId])
   @@index([status, category, country])
   @@index([businessId])
 }
@@ -273,7 +418,11 @@ model Conversion {
   id                String           @id @default(cuid())
   campaignId        String
   affiliateId       String
-  referralId        String
+  referralId        String?
+  couponId          String?
+  integrationId     String?
+  attributionSource AttributionSource @default(REFERRAL)
+  attributionEvidence Json?
   externalReference String
   customerReference String?
   amount            Decimal          @db.Decimal(14, 2)
@@ -289,7 +438,11 @@ model Conversion {
   updatedAt         DateTime         @updatedAt
   campaign          Campaign         @relation(fields: [campaignId], references: [id])
   affiliate         AffiliateProfile @relation(fields: [affiliateId], references: [id])
-  referral          Referral         @relation(fields: [referralId], references: [id])
+  referral          Referral?         @relation(fields: [referralId], references: [id])
+  coupon            Coupon?           @relation(fields: [couponId], references: [id])
+  couponRedemption  CouponRedemption?
+  verifications     ConversionVerification[]
+  integration       ExternalIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
   commission        Commission?
 
   @@unique([campaignId, externalReference])
@@ -375,4 +528,299 @@ model AuditLog {
   actor      User?    @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId])
+}
+
+model Coupon {
+  id             String             @id @default(cuid())
+  campaignId     String
+  affiliateId    String
+  code           String             @unique
+  discountType   CouponDiscountType
+  discountValue  Decimal            @db.Decimal(14, 2)
+  maxRedemptions Int?
+  startsAt       DateTime?
+  expiresAt      DateTime?
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  campaign       Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  affiliate      AffiliateProfile   @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  conversions    Conversion[]
+  redemptions    CouponRedemption[]
+
+  @@index([campaignId, isActive])
+  @@index([affiliateId])
+}
+
+model CouponRedemption {
+  id           String     @id @default(cuid())
+  couponId     String
+  conversionId String     @unique
+  redeemedAt   DateTime   @default(now())
+  status       CouponRedemptionStatus @default(RESERVED)
+
+  coupon       Coupon     @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  conversion   Conversion @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, redeemedAt, status])
+}
+
+// Phase 11 — creator economy, verification and automation.
+// Phase 12 — private programmes, external integrations, CRM and enterprise access.
+
+model CreatorProfile {
+  id             String               @id @default(cuid())
+  affiliateId    String               @unique
+  displayName    String
+  bio            String?
+  niches         String[]             @default([])
+  country        String               @default("Nigeria")
+  city           String?
+  languages      String[]             @default([])
+  portfolioUrl   String?
+  mediaKitUrl    String?
+  socialProfiles Json?
+  audienceSize   Int?
+  engagementRate Decimal?             @db.Decimal(7, 4)
+  status         CreatorProfileStatus @default(ACTIVE)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  affiliate      AffiliateProfile     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([country, city, status])
+  @@index([audienceSize])
+}
+
+model CreatorDeliverable {
+  id            String                  @id @default(cuid())
+  campaignId    String
+  affiliateId   String
+  title         String
+  description   String?
+  assetUrl      String
+  contentType   String?
+  status        CreatorDeliverableStatus @default(SUBMITTED)
+  version       Int                     @default(1)
+  reviewNotes   String?
+  reviewedById  String?
+  dueAt         DateTime?
+  submittedAt   DateTime                @default(now())
+  reviewedAt    DateTime?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  campaign      Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  affiliate     AffiliateProfile        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId, affiliateId])
+  @@index([status, dueAt])
+}
+
+model CreatorPayment {
+  id               String               @id @default(cuid())
+  campaignId       String
+  affiliateId      String
+  amount           Decimal              @db.Decimal(14, 2)
+  currency         String               @default("NGN")
+  status           CreatorPaymentStatus @default(PENDING)
+  paymentReference String?
+  paymentProvider  String?
+  adminNote        String?
+  approvedById     String?
+  paidAt           DateTime?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  campaign         Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  affiliate        AffiliateProfile     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, affiliateId])
+  @@index([status, createdAt])
+}
+
+model AffiliateProgram {
+  id                    String                @id @default(cuid())
+  businessId            String
+  name                  String
+  slug                  String                @unique
+  description           String?
+  status                AffiliateProgramStatus @default(DRAFT)
+  requiresApproval      Boolean               @default(true)
+  landingPageTitle      String?
+  landingPageDescription String?
+  brandColor            String?
+  customFields          Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  business              BusinessProfile       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  memberships           ProgramMembership[]
+  campaigns             Campaign[]
+
+  @@index([businessId, status])
+}
+
+model ProgramMembership {
+  id          String                  @id @default(cuid())
+  programId   String
+  affiliateId String
+  status      ProgramMembershipStatus @default(PENDING)
+  source      String                  @default("REGISTRATION_PAGE")
+  answers     Json?
+  appliedAt   DateTime                @default(now())
+  reviewedAt  DateTime?
+  reviewedById String?
+  program     AffiliateProgram        @relation(fields: [programId], references: [id], onDelete: Cascade)
+  affiliate   AffiliateProfile        @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, affiliateId])
+  @@index([affiliateId, status])
+}
+
+model BusinessMember {
+  id          String            @id @default(cuid())
+  businessId  String
+  userId      String
+  role        BusinessMemberRole @default(ANALYST)
+  isActive    Boolean           @default(true)
+  invitedById String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  business    BusinessProfile   @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, userId])
+  @@index([userId, isActive])
+}
+
+model ExternalIntegration {
+  id                  String              @id @default(cuid())
+  businessId          String
+  campaignId          String?
+  createdById         String
+  name                String
+  kind                IntegrationKind
+  provider            IntegrationProvider @default(GENERIC_HMAC)
+  status              IntegrationStatus   @default(ACTIVE)
+  publicKey           String              @unique
+  encryptedCredentials String?
+  config              Json?
+  allowedDomains      String[]            @default([])
+  lastEventAt         DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  business            BusinessProfile     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  campaign            Campaign?            @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  apiKeys             IntegrationApiKey[]
+  webhookEvents       WebhookEvent[]
+  conversions         Conversion[]
+  verifications       ConversionVerification[]
+  attributionTouches  AttributionTouch[]
+
+  @@index([businessId, kind, status])
+  @@index([campaignId])
+}
+
+model IntegrationApiKey {
+  id            String             @id @default(cuid())
+  integrationId String
+  name          String
+  keyPrefix     String
+  keyHash       String             @unique
+  scopes        String[]           @default([])
+  expiresAt     DateTime?
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime           @default(now())
+  integration   ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId, revokedAt])
+}
+
+model WebhookEvent {
+  id                String            @id @default(cuid())
+  integrationId     String
+  externalEventId   String
+  eventType         String
+  authMethod        String            @default("WEBHOOK_HMAC")
+  payload           Json
+  signatureVerified Boolean           @default(false)
+  status            WebhookEventStatus @default(RECEIVED)
+  attempts          Int               @default(0)
+  lastError         String?
+  processedAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  integration       ExternalIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  verification     ConversionVerification?
+
+  @@unique([integrationId, externalEventId])
+  @@index([status, createdAt])
+}
+
+model ConversionVerification {
+  id                String             @id @default(cuid())
+  conversionId      String
+  integrationId     String?
+  webhookEventId    String?            @unique
+  providerReference String?
+  status            VerificationStatus @default(PENDING)
+  evidence          Json?
+  failureReason     String?
+  verifiedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  conversion        Conversion         @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+  integration       ExternalIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  webhookEvent      WebhookEvent?      @relation(fields: [webhookEventId], references: [id], onDelete: SetNull)
+
+  @@index([conversionId, status])
+}
+
+model AttributionTouch {
+  id            String               @id @default(cuid())
+  externalEventId String?
+  integrationId String?
+  campaignId    String
+  affiliateId   String?
+  referralId    String?
+  couponId      String?
+  visitorHash   String
+  touchType     AttributionTouchType
+  source        String?
+  occurredAt    DateTime             @default(now())
+  metadata      Json?
+  integration   ExternalIntegration? @relation(fields: [integrationId], references: [id], onDelete: SetNull)
+  campaign      Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  affiliate     AffiliateProfile?    @relation(fields: [affiliateId], references: [id], onDelete: SetNull)
+
+  @@unique([integrationId, externalEventId])
+  @@index([campaignId, visitorHash, occurredAt])
+  @@index([affiliateId, occurredAt])
+}
+
+model BusinessAffiliateRecord {
+  id          String       @id @default(cuid())
+  businessId  String
+  affiliateId String
+  stage       CrmStage     @default(DISCOVERED)
+  tags        String[]     @default([])
+  notes       String?
+  lastContactAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  business    BusinessProfile  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, affiliateId])
+  @@index([businessId, stage])
+}
+
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  inAppEnabled   Boolean  @default(true)
+  emailEnabled   Boolean  @default(false)
+  mutedTypes     NotificationType[] @default([])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

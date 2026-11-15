@@ -12,9 +12,29 @@ import path from 'node:path';
 import { prisma } from './prisma';
 export const app = express();
 app.disable('x-powered-by');
-app.use(helmet());
-app.use(cors({ origin: corsOrigins, credentials: true }));
-app.use(express.json({ limit: '1mb' }));
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || corsOrigins.includes(origin)) return callback(null, true);
+    let hostname: string;
+    try {
+      hostname = new URL(origin).hostname.toLowerCase();
+    } catch {
+      return callback(null, false);
+    }
+    void prisma.externalIntegration.findFirst({
+      where: { kind: 'TRACKING', status: 'ACTIVE', allowedDomains: { has: hostname } },
+      select: { id: true },
+    }).then((integration: { id: string } | null) => callback(null, Boolean(integration))).catch(callback);
+  },
+  credentials: true,
+}));
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, _res, buffer) => {
+    (req as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  },
+}));
 app.use(rateLimit({ windowMs: 60_000, limit: 300, standardHeaders: true, legacyHeaders: false }));
 app.get('/', (_req, res) =>
   res.json({
