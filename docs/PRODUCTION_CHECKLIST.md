@@ -3,7 +3,8 @@
 Do not handle real customer funds until the following are reviewed and completed.
 
 ## Security
-- [ ] Implement email verification and password reset with expiring, single-use tokens.
+- [x] Implement email verification and password reset with expiring, single-use tokens.
+- [ ] Configure and verify production Resend sender credentials and test deliverability.
 - [ ] Move refresh tokens to Secure, HttpOnly, SameSite cookies where appropriate.
 - [ ] Revoke refresh sessions on password changes and account suspension.
 - [ ] Add tighter rate limits to registration, login, refresh and referral redirect.
@@ -57,3 +58,14 @@ Do not handle real customer funds until the following are reviewed and completed
 - [ ] Select and integrate a compliant payout provider before marking any automated or international payout capability as available.
 - [ ] Configure an email provider and delivery worker before enabling email notification delivery.
 - [ ] Run end-to-end tests for coupon redemption race conditions, webhook retries, API-key idempotency, first/last-click attribution, fixed-fee payment transitions and private-program permissions.
+
+
+## Authentication, invitations and audit readiness
+
+- [ ] Configure a verified sender domain and `RESEND_API_KEY` plus `EMAIL_FROM` before enabling production registration, password reset or invitations.
+- [ ] Confirm frontend verification and reset pages consume the `token` query parameter and call the matching confirmation/reset endpoints.
+- [ ] Confirm password reset invalidates all existing refresh sessions.
+- [ ] Verify administrator-only access to commission and audit-log list endpoints.
+- [ ] Verify business invitation permissions and that only invitation-only approved campaigns accept direct invitations.
+- [ ] Verify affiliate team invitation email matching, expiry, single-use acceptance and revocation.
+- [ ] Review audit coverage for all administrative and financial state changes.

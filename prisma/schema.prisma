@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum AffiliateInvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 enum Role {
   AFFILIATE
   BUSINESS
@@ -242,6 +254,8 @@ model User {
   auditLogs       AuditLog[]        @relation("AuditActor")
   businessMemberships BusinessMember[]
   notificationPreference NotificationPreference?
+  authTokens       AuthToken[]
+  acceptedAffiliateInvitations AffiliateInvitation[] @relation("AffiliateInvitationInvitee")
 }
 
 model RefreshSession {
@@ -278,10 +292,16 @@ model AffiliateProfile {
   creatorDeliverables CreatorDeliverable[]
   creatorPayments     CreatorPayment[]
   crmRecords          BusinessAffiliateRecord[]
+  invitedById         String?
+  invitedBy           AffiliateProfile? @relation("AffiliateTeam", fields: [invitedById], references: [id], onDelete: SetNull)
+  teamMembers         AffiliateProfile[] @relation("AffiliateTeam")
+  teamInvitations     AffiliateInvitation[]
   attributionTouches  AttributionTouch[]
   commissions         Commission[]
   walletEntries       WalletEntry[]
   withdrawals         Withdrawal[]
+
+  @@index([invitedById])
 }
 
 model BusinessProfile {
@@ -823,4 +843,35 @@ model NotificationPreference {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  type      AuthTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
+}
+
+model AffiliateInvitation {
+  id                String                   @id @default(cuid())
+  inviterAffiliateId String
+  inviteeEmail      String
+  tokenHash         String                   @unique
+  status            AffiliateInvitationStatus @default(PENDING)
+  expiresAt         DateTime
+  acceptedByUserId  String?
+  acceptedAt        DateTime?
+  createdAt         DateTime                 @default(now())
+  inviter           AffiliateProfile         @relation(fields: [inviterAffiliateId], references: [id], onDelete: Cascade)
+  acceptedByUser    User?                    @relation("AffiliateInvitationInvitee", fields: [acceptedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([inviterAffiliateId, status, createdAt])
+  @@index([inviteeEmail, status])
 }

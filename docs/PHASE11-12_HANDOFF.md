@@ -105,12 +105,23 @@ After migration:
 - The tracking SDK records attribution touches; a client-side touch is not proof of payment.
 - Creator payment and affiliate withdrawal endpoints record manual payment status. They do not initiate bank transfers.
 - Wallet balances are currency-separated, but withdrawal requests remain NGN-only.
-- Notification preferences and in-app notifications are implemented. Email delivery requires an email provider and delivery worker.
+- Notification preferences and in-app notifications are implemented. Verification, password recovery and invitation emails use the Resend API when configured; general notification email delivery remains future work.
 - Creator deliverables store HTTPS asset URLs; direct file storage/upload infrastructure is not included.
-- Business team membership adds existing BUSINESS accounts; email invitations are not sent.
+- Business team membership adds existing BUSINESS accounts; business-member email invitations remain outside this increment.
 - International payouts require a selected provider, credentials, compliance review and end-to-end acceptance tests.
 - Affiliate team commissions, advanced fraud scoring, full dispute/reversal workflows and AI recommendations remain outside this delivery.
 
 ## Security reminder
 
 The original uploaded archive contained `.env`. This handoff archive excludes it, but rotate the Neon database password and JWT signing secret from that file before production use. Never commit or upload `.env`, integration encryption keys, webhook secrets or integration API keys.
+
+
+## Backend completion increment (20 November 2026)
+
+- Added one-time email verification and password-reset token workflows. Existing accounts are marked verified in the migration to prevent a forced re-verification lockout; new registrations must verify before login.
+- Added Resend-backed transactional email delivery with development console previews and environment configuration. Production must configure a verified sender.
+- Added paginated affiliate application and conversion lists; business campaign application and conversion lists now support pagination and filtering.
+- Added administrator commission list with status/currency totals and searchable administrator audit-log list.
+- Added invitation-only campaign invitations and affiliate team invitations, including accept/decline/revoke flows and audit events.
+- Added `AuthToken` and `AffiliateInvitation` persistence plus the `invitedById` affiliate-team relationship.
+- Business-member email invitations, SMS, and general notification email delivery remain outside this increment.

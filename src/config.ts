@@ -13,6 +13,8 @@ const schema = z.object({
   API_PUBLIC_URL: z.string().url().default('http://localhost:4000').transform((value) => value.replace(/\/+$/, '')),
   COMMISSION_RELEASE_INTERVAL_MS: z.coerce.number().int().min(10000).default(60000),
   COMMISSION_RELEASE_BATCH_SIZE: z.coerce.number().int().min(1).max(1000).default(100),
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().min(3).optional(),
   INTEGRATION_ENCRYPTION_KEY: z.preprocess((value) => value === '' ? undefined : value, z.string().regex(/^[a-f0-9]{64}$/i).optional())
 });
 const result = schema.safeParse(process.env);

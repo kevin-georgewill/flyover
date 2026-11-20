@@ -125,3 +125,16 @@ The frontend should hide actions that the current member role cannot perform, bu
 
 ### Selecting a business context
 Business users who own or belong to multiple businesses should send `X-Business-Id: <business-profile-id>` on business-scoped requests. The backend verifies that the caller owns or is an active member of the selected business and enforces the member role. If omitted, the owner's business is selected first, otherwise the user's first active membership is used.
+
+
+## Email and account recovery integration
+
+The frontend should implement `/verify-email` and `/reset-password` pages. The links sent by the backend contain a `token` query parameter. Submit that token to `POST /auth/email-verification/confirm` or together with the new password to `POST /auth/password/reset`. Request links through `/auth/email-verification/resend` and `/auth/password/forgot`; both endpoints intentionally return generic responses to avoid disclosing whether an email is registered. New accounts cannot sign in until verified.
+
+For production email delivery, set `RESEND_API_KEY` and `EMAIL_FROM` to a sender identity verified with Resend. In development, the backend logs a preview link to the API process console.
+
+## Lists and invitations
+
+Affiliates use `GET /affiliates/applications` and `GET /affiliates/conversions` with optional status filters and pagination. Businesses use the existing campaign application and conversion list endpoints, now paginated. Administrators use `GET /admin/commissions` and `GET /admin/audit-logs`.
+
+Campaign invitations are sent by a business to affiliate profile IDs for an approved campaign whose access mode is `INVITATION`. The affiliate sees the invitation in their applications list and responds through `/affiliates/applications/:id/respond-to-invitation`. Affiliate team invitations are email-based; invitees must sign in with the invited email address before accepting. Team invitations do not create earnings by themselves.

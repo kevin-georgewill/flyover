@@ -24,9 +24,9 @@ Node.js + Express + TypeScript + PostgreSQL + Prisma backend for the Flyover Aff
 - Scheduled, idempotent commission release worker and multi-currency wallet balance breakdown.
 
 ## Remaining production integrations and boundaries
-- Email/SMS delivery, password reset and verification-document upload.
+- SMS delivery and verification-document upload. Email verification, password reset and affiliate/campaign invitations are implemented; transactional email requires Resend configuration.
 - Automated bank payouts and international payout provider integrations. Withdrawal and creator-payment endpoints record manual payment outcomes only.
-- Email notification delivery; notification preferences and in-app notifications are implemented.
+- General notification emails beyond verification, recovery and invitation flows; notification preferences and in-app notifications are implemented.
 - Affiliate team commissions, advanced fraud scoring and full dispute/reversal workflows.
 - AI marketing assistant and automated campaign recommendations remain deferred until reliable usage data exists, as required by the roadmap.
 - Provider-specific webhook setup still requires each merchant's provider account, webhook secret, public API URL and acceptance tests.
@@ -54,7 +54,7 @@ Health: `GET http://localhost:4000/api/v1/health`
 ## Authentication
 Public registration permits only `AFFILIATE` and `BUSINESS`. Admin users are created through the seed script. Login returns a short-lived access JWT and a random refresh token. Refresh tokens are stored hashed and rotated on refresh. Send access tokens using `Authorization: Bearer <token>`.
 
-The JSON refresh-token response is a local integration convenience. Before production, prefer Secure, HttpOnly, SameSite cookies and implement email verification/password reset.
+New accounts must verify their email before login. Password recovery uses expiring, single-use hashed tokens and revokes active refresh sessions. The JSON refresh-token response is a local integration convenience; before production, prefer Secure, HttpOnly, SameSite cookies.
 
 ## API conventions
 All routes are under `/api/v1`. Success: `{ "success": true, "data": ... }`. Errors: `{ "success": false, "error": { "code": "...", "message": "..." } }`. Validation errors return HTTP 400 with details.
@@ -66,3 +66,14 @@ Interactive Swagger UI: `http://localhost:4000/docs`
 OpenAPI contract: `http://localhost:4000/docs/openapi.yaml`
 
 The frontend developer should use Swagger UI and `docs/openapi.yaml` as the API contract. Start with `docs/INTEGRATION_GUIDE.md`, then `docs/API.md`. Backend changes to routes, request shapes, response shapes, enums or permissions must be reflected in the docs in the same pull request.
+
+
+## Authentication completion and operational endpoints
+
+- New accounts must verify their email before login. Configure `RESEND_API_KEY` and `EMAIL_FROM` to deliver verification, password reset and invitation emails. In development, email links are printed to the server console.
+- `POST /api/v1/auth/email-verification/resend` and `POST /api/v1/auth/email-verification/confirm` implement email verification.
+- `POST /api/v1/auth/password/forgot` and `POST /api/v1/auth/password/reset` implement one-time, expiring password recovery tokens. Password reset revokes all refresh sessions.
+- `GET /api/v1/affiliates/applications` and `GET /api/v1/affiliates/conversions` provide paginated affiliate lists. Business application and conversion lists also support pagination and filters.
+- `GET /api/v1/admin/commissions` and `GET /api/v1/admin/audit-logs` provide administrator views with pagination and filtering.
+- Affiliate team invitations are available under `/api/v1/affiliates/team`; invitation-only campaign invitations are available under `/api/v1/businesses/campaigns/:id/invitations`.
+- Apply migration `20261120190000_auth_audit_lists_invitations` before deploying this version. Existing users are marked verified by the migration to avoid locking out accounts created before verification was implemented.

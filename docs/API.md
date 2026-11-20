@@ -115,10 +115,10 @@ Admin payment outcome example: `{ "decision":"PAID", "paymentReference":"BANK-RE
 | GET | `/analytics/business` | BUSINESS | Business metrics |
 
 ## Important implementation limitations
-- No email/SMS delivery, password reset or verification-document upload.
+- No SMS delivery or verification-document upload. Email verification, password recovery and campaign/affiliate invitations are implemented; transactional email delivery requires Resend configuration.
 - No automatic payment payout or automatic conversion verification.
 - Attribution is referral-code based; the full multi-click attribution window/cookie policy is not implemented yet.
-- Invitation-only campaign invite workflow is not implemented.
+- Business-member email invitations are not implemented; affiliate team and invitation-only campaign workflows are implemented.
 - Commission release is admin-triggered, not scheduled.
 - Commission reversal and complete dispute workflows are not implemented.
 - Analytics are basic aggregates.
@@ -287,7 +287,7 @@ The SDK records a pseudonymous visitor ID and tracking event IDs. Conversion att
 | GET | `/analytics/business/campaigns` | BUSINESS | Campaign performance breakdown |
 | GET | `/analytics/business/affiliates` | BUSINESS | Affiliate performance breakdown |
 
-Email preference is stored, but email delivery is not enabled until an email provider and delivery worker are configured. In-app notifications are applied according to saved preferences.
+Email preference is stored. Verification, password recovery and invitation messages use the Resend API when configured; general notification email delivery is not implemented. In-app notifications are applied according to saved preferences.
 
 ## Integration and financial boundaries
 - External integration credentials are encrypted with AES-256-GCM; the encryption key is supplied through the backend environment.
@@ -302,3 +302,30 @@ Email preference is stored, but email delivery is not enabled until an email pro
 
 
 Business users with access to multiple businesses may send `X-Business-Id: <business-profile-id>` on business-scoped requests to select the tenant context. Access and role are verified server-side.
+
+
+## Authentication completion
+
+| Method | Endpoint | Purpose | Auth |
+|---|---|---|---|
+| POST | `/auth/email-verification/resend` | Resend verification email (generic response) | Public |
+| POST | `/auth/email-verification/confirm` | Consume verification token | Public |
+| POST | `/auth/password/forgot` | Request password reset (generic response) | Public |
+| POST | `/auth/password/reset` | Consume one-time reset token and revoke sessions | Public |
+
+## Affiliate and administration lists
+
+| Method | Endpoint | Purpose | Auth |
+|---|---|---|---|
+| GET | `/affiliates/applications` | Paginated applications and campaign invitations | Affiliate |
+| GET | `/affiliates/conversions` | Paginated affiliate conversions | Affiliate |
+| GET | `/admin/commissions` | Filtered platform commissions and grouped totals | Admin |
+| GET | `/admin/audit-logs` | Searchable audit trail | Admin |
+| GET | `/affiliates/team` | Team members and inviter | Affiliate |
+| GET/POST | `/affiliates/team/invitations` | List/send affiliate team invitations | Affiliate |
+| POST | `/affiliates/team/invitations/accept` | Accept team invitation | Affiliate |
+| POST | `/affiliates/team/invitations/:id/revoke` | Revoke pending invitation | Affiliate |
+| POST | `/businesses/campaigns/:id/invitations` | Invite affiliates to invitation-only campaign | Business |
+| POST | `/affiliates/applications/:id/respond-to-invitation` | Accept/decline campaign invitation | Affiliate |
+
+List endpoints use `page` and `limit` (maximum 100). Authentication tokens are stored hashed and expire; raw reset/verification tokens are never stored in the database. Email delivery uses the Resend HTTP API when configured.

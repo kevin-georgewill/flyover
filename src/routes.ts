@@ -9,6 +9,7 @@ import { env } from './config';
 import { requireAuth, roles, current } from './auth';
 import { HttpError } from './errors';
 import { phase11And12Router } from './modules/phase11-12.routes';
+import { sendTransactionalEmail } from './services/email';
 export const router = Router();
 function businessMemberGuard(req: import('express').Request, _res: import('express').Response, next: import('express').NextFunction) {
   void (async () => {
@@ -91,12 +92,22 @@ router.post('/auth/register', async (req,res) => {
   const user = await prisma.user.create({ data:{ fullName:b.fullName,email:b.email,phone:b.phone,passwordHash,role:b.role,
     ...(b.role==='AFFILIATE' ? { affiliate:{ create:{} } } : { business:{ create:{ name:b.fullName } } }) },
     select:{ id:true,fullName:true,email:true,role:true,createdAt:true } });
-  res.status(201).json({ success:true,data:{ user } });
+  const rawVerificationToken = crypto.randomBytes(32).toString('base64url');
+  await prisma.authToken.create({ data: { userId: user.id, type: 'EMAIL_VERIFICATION', tokenHash: tokenHash(rawVerificationToken), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } });
+  const verificationLink = `${env.APP_BASE_URL.replace(/\/+$/, '')}/verify-email?token=${encodeURIComponent(rawVerificationToken)}`;
+  await sendTransactionalEmail({
+    to: user.email,
+    subject: 'Verify your Flyover email address',
+    html: `<p>Welcome to Flyover, ${user.fullName.replace(/[<>]/g, '')}.</p><p><a href=\"${verificationLink}\">Verify your email address</a></p><p>This link expires in 24 hours.</p>`,
+    text: `Verify your Flyover email address: ${verificationLink}\nThis link expires in 24 hours.`,
+  });
+  res.status(201).json({ success:true,data:{ user, emailVerificationRequired: true } });
 });
 router.post('/auth/login', async (req,res) => {
   const b = z.object({ email:z.string().email().transform(x=>x.toLowerCase()), password:z.string().min(1) }).parse(req.body);
   const u = await prisma.user.findUnique({ where:{ email:b.email } });
   if (!u || !u.isActive || !(await bcrypt.compare(b.password,u.passwordHash))) throw new HttpError(401,'Invalid email or password','INVALID_CREDENTIALS');
+  if (!u.isEmailVerified) throw new HttpError(403, 'Please verify your email address before signing in.', 'EMAIL_NOT_VERIFIED');
   const rt = newRefresh(); await prisma.refreshSession.create({ data:{ userId:u.id,tokenHash:tokenHash(rt),expiresAt:new Date(Date.now()+env.REFRESH_TOKEN_DAYS*86400000) } });
   res.json({ success:true,data:{ user:{id:u.id,fullName:u.fullName,email:u.email,role:u.role},accessToken:accessToken(u),refreshToken:rt,tokenType:'Bearer' } });
 });
@@ -274,7 +285,18 @@ router.post('/campaigns/:id/apply',...affiliateOnly,async(req,res)=>{
   });
   res.status(201).json({success:true,data:application});
 });
-router.get('/businesses/campaigns/:id/applications',...businessOnly,async(req,res)=>{const {id}=idSchema.parse(req.params);const bp=await getBusiness(current(req).userId, req.get('x-business-id') ?? undefined);if(!await prisma.campaign.findFirst({where:{id,businessId:bp.id}}))throw new HttpError(404,'Campaign not found');const data=await prisma.campaignApplication.findMany({where:{campaignId:id},include:{affiliate:{include:{user:{select:{id:true,fullName:true,email:true}}}}}});res.json({success:true,data});});
+router.get('/businesses/campaigns/:id/applications',...businessOnly,async(req,res)=>{
+  const {id}=idSchema.parse(req.params);
+  const bp=await getBusiness(current(req).userId, req.get('x-business-id') ?? undefined);
+  if(!await prisma.campaign.findFirst({where:{id,businessId:bp.id}}))throw new HttpError(404,'Campaign not found');
+  const query=z.object({status:z.enum(['PENDING','APPROVED','REJECTED','INVITED']).optional(),page:z.coerce.number().int().positive().default(1),limit:z.coerce.number().int().min(1).max(100).default(20)}).parse(req.query);
+  const where={campaignId:id,...(query.status?{status:query.status}:{})};
+  const [data,total]=await Promise.all([
+    prisma.campaignApplication.findMany({where,include:{affiliate:{include:{user:{select:{id:true,fullName:true,email:true}}}}},orderBy:{createdAt:'desc'},skip:(query.page-1)*query.limit,take:query.limit}),
+    prisma.campaignApplication.count({where}),
+  ]);
+  res.json({success:true,data,meta:{page:query.page,limit:query.limit,total,pages:Math.ceil(total/query.limit)}});
+});
 router.patch('/businesses/applications/:id',...businessOnly,async(req,res)=>{const {id}=idSchema.parse(req.params);const b=z.object({status:z.enum(['APPROVED','REJECTED'])}).parse(req.body);const bp=await getBusiness(current(req).userId, req.get('x-business-id') ?? undefined);const a=await prisma.campaignApplication.findUnique({where:{id},include:{campaign:true}});if(!a||a.campaign.businessId!==bp.id)throw new HttpError(404,'Application not found');const data=await prisma.$transaction(async tx=>{const changed=await tx.campaignApplication.update({where:{id},data:{status:b.status,reviewedAt:new Date()}});if(b.status==='APPROVED') {
   await tx.referral.upsert({where:{campaignId_affiliateId:{campaignId:a.campaignId,affiliateId:a.affiliateId}},update:{},create:{campaignId:a.campaignId,affiliateId:a.affiliateId,code:crypto.randomBytes(12).toString('base64url')}});
   if(a.campaign.compensationModel!==CompensationModel.PERFORMANCE && a.campaign.fixedFeeAmount) {
@@ -490,7 +512,16 @@ router.get('/affiliates/coupons', ...affiliateOnly, async (req, res) => {
 });
 
 
-router.get('/businesses/conversions',...businessOnly,async(req,res)=>{const bp=await getBusiness(current(req).userId, req.get('x-business-id') ?? undefined);const status=z.enum(['PENDING','APPROVED','REJECTED','REVERSED','DISPUTED']).optional().parse(req.query.status);const data=await prisma.conversion.findMany({where:{campaign:{businessId:bp.id},...(status?{status}:{})},include:{campaign:true,affiliate:{include:{user:{select:{fullName:true,email:true}}}},commission:true,coupon:true,referral:true,verifications:true},orderBy:{createdAt:'desc'}});res.json({success:true,data});});
+router.get('/businesses/conversions',...businessOnly,async(req,res)=>{
+  const bp=await getBusiness(current(req).userId, req.get('x-business-id') ?? undefined);
+  const query=z.object({status:z.enum(['PENDING','APPROVED','REJECTED','REVERSED','DISPUTED']).optional(),campaignId:z.string().optional(),page:z.coerce.number().int().positive().default(1),limit:z.coerce.number().int().min(1).max(100).default(20)}).parse(req.query);
+  const where={campaign:{businessId:bp.id},...(query.status?{status:query.status}:{}),...(query.campaignId?{campaignId:query.campaignId}:{})};
+  const [data,total]=await Promise.all([
+    prisma.conversion.findMany({where,include:{campaign:true,affiliate:{include:{user:{select:{fullName:true,email:true}}}},commission:true,coupon:true,referral:true,verifications:true},orderBy:{createdAt:'desc'},skip:(query.page-1)*query.limit,take:query.limit}),
+    prisma.conversion.count({where}),
+  ]);
+  res.json({success:true,data,meta:{page:query.page,limit:query.limit,total,pages:Math.ceil(total/query.limit)}});
+});
 
 // Admin moderation and audit.
 router.get('/admin/businesses',...adminOnly,async(req,res)=>{const status=z.enum(['PENDING','APPROVED','REJECTED','SUSPENDED']).optional().parse(req.query.status);const data=await prisma.businessProfile.findMany({where:status?{status}:{},include:{user:{select:{fullName:true,email:true}}},orderBy:{createdAt:'desc'}});res.json({success:true,data});});

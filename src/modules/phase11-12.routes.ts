@@ -1,8 +1,9 @@
 import { Router, Request } from 'express';
+import rateLimit from 'express-rate-limit';
 import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import {
-  Prisma, Role, BusinessStatus, CampaignStatus, CampaignAccess,
+  Prisma, Role, BusinessStatus, CampaignStatus, CampaignAccess, AuthTokenType, AffiliateInvitationStatus,
   ApplicationStatus, ConversionStatus, CommissionStatus, LedgerType,
   NotificationType, CompensationModel, CouponDiscountType,
   CouponRedemptionStatus, CreatorDeliverableStatus, CreatorPaymentStatus,
@@ -16,6 +17,7 @@ import { prisma } from '../prisma';
 import { env } from '../config';
 import { requireAuth, roles, current } from '../auth';
 import { HttpError } from '../errors';
+import { sendTransactionalEmail } from '../services/email';
 import {
   decryptCredentials, encryptCredentials, normalizeWebhook,
   sha256, verifyWebhookSignature,
@@ -132,8 +134,9 @@ async function resolveAttribution(
   if (input.referralCode && !referral) throw new HttpError(404, 'Referral code not found');
   if (input.couponCode && !coupon) throw new HttpError(404, 'Coupon code not found');
 
-  let campaign = referral?.campaign ?? coupon?.campaign ?? null;
-let affiliate = referral?.affiliate ?? coupon?.affiliate ?? null;
+  let campaign: Prisma.CampaignGetPayload<{}> | null = referral?.campaign ?? coupon?.campaign ?? null;
+  let affiliate: Prisma.AffiliateProfileGetPayload<{ include: { user: true } }> | null =
+    referral?.affiliate ?? coupon?.affiliate ?? null;
   if (!campaign && input.campaignId && input.visitorHash) {
     campaign = await tx.campaign.findFirst({
       where: { id: input.campaignId, businessId: input.businessId, status: CampaignStatus.APPROVED },
@@ -1345,11 +1348,7 @@ phase11And12Router.post('/webhooks/:id', async (req, res) => {
   if (event && stableStringify(event.payload) !== stableStringify(safeWebhookPayload)) {
     throw new HttpError(409, 'Webhook event ID has already been used with a different payload');
   }
-if (
-    event &&
-    (event.status === WebhookEventStatus.PROCESSED ||
-      event.status === WebhookEventStatus.IGNORED)
-  ) {
+  if (event && (event.status === WebhookEventStatus.PROCESSED || event.status === WebhookEventStatus.IGNORED)) {
     res.status(200).json({ success: true, data: { duplicate: true } });
     return;
   }
@@ -1383,10 +1382,7 @@ if (
       event = await prisma.webhookEvent.findUniqueOrThrow({
         where: { integrationId_externalEventId: { integrationId: id, externalEventId: eventId } },
       });
-      if (
-        event.status === WebhookEventStatus.PROCESSED ||
-        event.status === WebhookEventStatus.IGNORED
-      ) {
+      if (event.status === WebhookEventStatus.PROCESSED || event.status === WebhookEventStatus.IGNORED) {
         res.status(200).json({ success: true, data: { duplicate: true } });
         return;
       }
@@ -1684,4 +1680,248 @@ phase11And12Router.get('/analytics/business/affiliates', ...businessOnly, async 
       approvedConversionValueByCurrency: Object.fromEntries(Object.entries(item.approvedValueByCurrency).map(([currency, amount]) => [currency, Number(amount.toFixed(2))])),
     })),
   });
+});
+
+
+// -----------------------------------------------------------------------------
+// Authentication completion: email verification and password recovery.
+// -----------------------------------------------------------------------------
+const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
+const pageQuery = z.object({ page: z.coerce.number().int().min(1).default(1), limit: z.coerce.number().int().min(1).max(100).default(20) });
+const authEmailLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
+const appUrl = (path: string, token: string) => `${env.APP_BASE_URL.replace(/\/+$/, '')}${path}?token=${encodeURIComponent(token)}`;
+
+async function issueAuthToken(userId: string, type: AuthTokenType, ttlMs: number) {
+  const raw = crypto.randomBytes(32).toString('base64url');
+  await prisma.$transaction([
+    prisma.authToken.updateMany({ where: { userId, type, usedAt: null }, data: { usedAt: new Date() } }),
+    prisma.authToken.create({ data: { userId, type, tokenHash: hashToken(raw), expiresAt: new Date(Date.now() + ttlMs) } }),
+  ]);
+  return raw;
+}
+
+phase11And12Router.post('/auth/email-verification/resend', authEmailLimiter, async (req, res) => {
+  const { email } = z.object({ email: z.string().email().transform((v) => v.toLowerCase()) }).parse(req.body);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user && !user.isEmailVerified && user.isActive) {
+    const token = await issueAuthToken(user.id, AuthTokenType.EMAIL_VERIFICATION, 24 * 60 * 60 * 1000);
+    const link = appUrl('/verify-email', token);
+    await sendTransactionalEmail({
+      to: user.email,
+      subject: 'Verify your Flyover email address',
+      html: `<p>Hello ${user.fullName.replace(/[<>]/g, '')},</p><p>Verify your email address to activate your Flyover account.</p><p><a href="${link}">Verify email</a></p><p>This link expires in 24 hours.</p>`,
+      text: `Verify your Flyover email address: ${link}\nThis link expires in 24 hours.`,
+    });
+  }
+  res.json({ success: true, data: { message: 'If the account requires verification, an email will be sent.' } });
+});
+
+phase11And12Router.post('/auth/email-verification/confirm', async (req, res) => {
+  const { token } = z.object({ token: z.string().min(20).max(200) }).parse(req.body);
+  const record = await prisma.authToken.findUnique({ where: { tokenHash: hashToken(token) }, include: { user: true } });
+  if (!record || record.type !== AuthTokenType.EMAIL_VERIFICATION || record.usedAt || record.expiresAt <= new Date()) {
+    throw new HttpError(400, 'Verification link is invalid or expired', 'INVALID_TOKEN');
+  }
+  await prisma.$transaction([
+    prisma.authToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    prisma.user.update({ where: { id: record.userId }, data: { isEmailVerified: true } }),
+  ]);
+  res.json({ success: true, data: { message: 'Email address verified successfully.' } });
+});
+
+phase11And12Router.post('/auth/password/forgot', authEmailLimiter, async (req, res) => {
+  const { email } = z.object({ email: z.string().email().transform((v) => v.toLowerCase()) }).parse(req.body);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user && user.isActive) {
+    const token = await issueAuthToken(user.id, AuthTokenType.PASSWORD_RESET, 60 * 60 * 1000);
+    const link = appUrl('/reset-password', token);
+    await sendTransactionalEmail({
+      to: user.email,
+      subject: 'Reset your Flyover password',
+      html: `<p>Hello ${user.fullName.replace(/[<>]/g, '')},</p><p>Use the link below to reset your password.</p><p><a href="${link}">Reset password</a></p><p>This link expires in one hour. If you did not request this, ignore this email.</p>`,
+      text: `Reset your Flyover password: ${link}\nThis link expires in one hour.`,
+    });
+  }
+  res.json({ success: true, data: { message: 'If an active account exists for that email, password reset instructions will be sent.' } });
+});
+
+phase11And12Router.post('/auth/password/reset', authEmailLimiter, async (req, res) => {
+  const body = z.object({ token: z.string().min(20).max(200), password: z.string().min(10).max(128) }).parse(req.body);
+  const record = await prisma.authToken.findUnique({ where: { tokenHash: hashToken(body.token) } });
+  if (!record || record.type !== AuthTokenType.PASSWORD_RESET || record.usedAt || record.expiresAt <= new Date()) {
+    throw new HttpError(400, 'Password reset link is invalid or expired', 'INVALID_TOKEN');
+  }
+  const passwordHash = await bcrypt.hash(body.password, 12);
+  await prisma.$transaction([
+    prisma.authToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
+    prisma.user.update({ where: { id: record.userId }, data: { passwordHash } }),
+    prisma.refreshSession.updateMany({ where: { userId: record.userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+  ]);
+  res.json({ success: true, data: { message: 'Password reset successfully. Please sign in again.' } });
+});
+
+// -----------------------------------------------------------------------------
+// Affiliate self-service lists: applications, conversions and team invitations.
+// -----------------------------------------------------------------------------
+phase11And12Router.get('/affiliates/applications', ...affiliateOnly, async (req, res) => {
+  const query = pageQuery.extend({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'INVITED']).optional() }).parse(req.query);
+  const affiliate = await affiliateForUser(current(req).userId);
+  const where = { affiliateId: affiliate.id, ...(query.status ? { status: query.status } : {}) };
+  const [data, total] = await Promise.all([
+    prisma.campaignApplication.findMany({ where, include: { campaign: { include: { business: { select: { id: true, name: true, country: true } }, product: true } }, }, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.campaignApplication.count({ where }),
+  ]);
+  res.json({ success: true, data, meta: { page: query.page, limit: query.limit, total, pages: Math.ceil(total / query.limit) } });
+});
+
+phase11And12Router.get('/affiliates/conversions', ...affiliateOnly, async (req, res) => {
+  const query = pageQuery.extend({ status: z.enum(['PENDING', 'APPROVED', 'REJECTED', 'REVERSED', 'DISPUTED']).optional(), campaignId: z.string().optional() }).parse(req.query);
+  const affiliate = await affiliateForUser(current(req).userId);
+  const where = { affiliateId: affiliate.id, ...(query.status ? { status: query.status } : {}), ...(query.campaignId ? { campaignId: query.campaignId } : {}) };
+  const [data, total] = await Promise.all([
+    prisma.conversion.findMany({ where, include: { campaign: { select: { id: true, name: true, currency: true } }, commission: true, referral: { select: { code: true } }, coupon: { select: { code: true } }, verifications: true }, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.conversion.count({ where }),
+  ]);
+  res.json({ success: true, data, meta: { page: query.page, limit: query.limit, total, pages: Math.ceil(total / query.limit) } });
+});
+
+phase11And12Router.post('/affiliates/team/invitations', ...affiliateOnly, async (req, res) => {
+  const body = z.object({ email: z.string().email().transform((v) => v.toLowerCase()) }).parse(req.body);
+  const affiliate = await affiliateForUser(current(req).userId);
+  const invitee = await prisma.user.findUnique({ where: { email: body.email }, include: { affiliate: true } });
+  if (invitee?.id === affiliate.userId) throw new HttpError(400, 'You cannot invite yourself to your affiliate team');
+  if (invitee?.role === Role.ADMIN || invitee?.role === Role.BUSINESS) throw new HttpError(400, 'Only affiliate accounts can join an affiliate team');
+  if (invitee?.affiliate?.invitedById) throw new HttpError(409, 'This affiliate already belongs to a team');
+  const pending = await prisma.affiliateInvitation.findFirst({ where: { inviterAffiliateId: affiliate.id, inviteeEmail: body.email, status: AffiliateInvitationStatus.PENDING, expiresAt: { gt: new Date() } } });
+  if (pending) throw new HttpError(409, 'An active invitation has already been sent to this email');
+  const rawToken = crypto.randomBytes(32).toString('base64url');
+  const invitation = await prisma.affiliateInvitation.create({ data: { inviterAffiliateId: affiliate.id, inviteeEmail: body.email, tokenHash: hashToken(rawToken), expiresAt: new Date(Date.now() + 7 * 86400000) } });
+  const link = `${env.APP_BASE_URL.replace(/\/+$/, '')}/affiliate-invitations/accept?token=${encodeURIComponent(rawToken)}`;
+  await sendTransactionalEmail({ to: body.email, subject: 'You have been invited to join an affiliate team on Flyover', html: `<p>You have been invited to join an affiliate team on Flyover.</p><p><a href="${link}">Accept invitation</a></p><p>This invitation expires in seven days.</p>`, text: `Accept your Flyover affiliate team invitation: ${link}\nThis invitation expires in seven days.` });
+  await audit(current(req).userId, 'AFFILIATE_TEAM_INVITATION_SENT', 'AffiliateInvitation', invitation.id, { inviteeEmail: invitation.inviteeEmail });
+  res.status(201).json({ success: true, data: { id: invitation.id, email: invitation.inviteeEmail, status: invitation.status, expiresAt: invitation.expiresAt } });
+});
+
+phase11And12Router.get('/affiliates/team', ...affiliateOnly, async (req, res) => {
+  const affiliate = await affiliateForUser(current(req).userId);
+  const [team, invitedBy] = await Promise.all([
+    prisma.affiliateProfile.findMany({ where: { invitedById: affiliate.id }, include: { user: { select: { id: true, fullName: true, email: true, createdAt: true } } }, orderBy: { createdAt: 'desc' } }),
+    prisma.affiliateProfile.findUnique({ where: { id: affiliate.id }, include: { invitedBy: { include: { user: { select: { id: true, fullName: true } } } } } }),
+  ]);
+  res.json({ success: true, data: { team, invitedBy: invitedBy?.invitedBy?.user ?? null } });
+});
+
+phase11And12Router.get('/affiliates/team/invitations', ...affiliateOnly, async (req, res) => {
+  const affiliate = await affiliateForUser(current(req).userId);
+  const data = await prisma.affiliateInvitation.findMany({ where: { inviterAffiliateId: affiliate.id }, orderBy: { createdAt: 'desc' }, take: 100 });
+  res.json({ success: true, data });
+});
+
+phase11And12Router.post('/affiliates/team/invitations/accept', ...affiliateOnly, async (req, res) => {
+  const { token } = z.object({ token: z.string().min(20).max(200) }).parse(req.body);
+  const userId = current(req).userId;
+  const [user, invitee] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { email: true, role: true } }),
+    prisma.affiliateProfile.findUniqueOrThrow({ where: { userId } }),
+  ]);
+  const invitation = await prisma.affiliateInvitation.findUnique({ where: { tokenHash: hashToken(token) } });
+  if (!invitation || invitation.status !== AffiliateInvitationStatus.PENDING || invitation.expiresAt <= new Date() || invitation.inviteeEmail !== user.email) throw new HttpError(400, 'Invitation is invalid, expired, or belongs to another email');
+  if (invitee.invitedById) throw new HttpError(409, 'You already belong to an affiliate team');
+  await prisma.$transaction([
+    prisma.affiliateInvitation.update({ where: { id: invitation.id }, data: { status: AffiliateInvitationStatus.ACCEPTED, acceptedByUserId: userId, acceptedAt: new Date() } }),
+    prisma.affiliateProfile.update({ where: { id: invitee.id }, data: { invitedById: invitation.inviterAffiliateId } }),
+  ]);
+  await audit(userId, 'AFFILIATE_TEAM_INVITATION_ACCEPTED', 'AffiliateInvitation', invitation.id, { inviterAffiliateId: invitation.inviterAffiliateId });
+  await notify(userId, NotificationType.GENERAL, 'Affiliate team invitation accepted', 'You have joined an affiliate team.');
+  res.json({ success: true, data: { message: 'Affiliate team invitation accepted.' } });
+});
+
+phase11And12Router.post('/affiliates/team/invitations/:id/revoke', ...affiliateOnly, async (req, res) => {
+  const { id } = idParams.parse(req.params);
+  const affiliate = await affiliateForUser(current(req).userId);
+  const changed = await prisma.affiliateInvitation.updateMany({ where: { id, inviterAffiliateId: affiliate.id, status: AffiliateInvitationStatus.PENDING }, data: { status: AffiliateInvitationStatus.REVOKED } });
+  if (!changed.count) throw new HttpError(404, 'Pending invitation not found');
+  await audit(current(req).userId, 'AFFILIATE_TEAM_INVITATION_REVOKED', 'AffiliateInvitation', id);
+  res.json({ success: true, data: { revoked: true } });
+});
+
+// -----------------------------------------------------------------------------
+// Business campaign invitations use the existing CampaignApplication record.
+// -----------------------------------------------------------------------------
+phase11And12Router.post('/businesses/campaigns/:id/invitations', ...businessOnly, async (req, res) => {
+  const { id } = idParams.parse(req.params);
+  const body = z.object({ affiliateIds: z.array(z.string().min(1)).min(1).max(100), message: z.string().max(1000).optional() }).parse(req.body);
+  const { business } = await requireBusiness(req, 'WRITE');
+  const campaign = await prisma.campaign.findFirst({ where: { id, businessId: business.id } });
+  if (!campaign) throw new HttpError(404, 'Campaign not found');
+  if (campaign.access !== CampaignAccess.INVITATION) throw new HttpError(409, 'Only invitation-only campaigns support direct affiliate invitations');
+  if (campaign.status !== CampaignStatus.APPROVED) throw new HttpError(409, 'Campaign must be approved before inviting affiliates');
+  const affiliates = await prisma.affiliateProfile.findMany({ where: { id: { in: body.affiliateIds } }, include: { user: { select: { id: true, email: true } } } });
+  if (affiliates.length !== new Set(body.affiliateIds).size) throw new HttpError(400, 'One or more affiliate IDs are invalid');
+  const invited = [];
+  for (const affiliate of affiliates) {
+    const existing = await prisma.campaignApplication.findUnique({ where: { campaignId_affiliateId: { campaignId: id, affiliateId: affiliate.id } } });
+    if (existing?.status === ApplicationStatus.APPROVED) continue;
+    const application = await prisma.campaignApplication.upsert({
+      where: { campaignId_affiliateId: { campaignId: id, affiliateId: affiliate.id } },
+      update: { status: ApplicationStatus.INVITED, message: body.message ?? 'You have been invited to this campaign.', reviewedAt: null },
+      create: { campaignId: id, affiliateId: affiliate.id, status: ApplicationStatus.INVITED, message: body.message ?? 'You have been invited to this campaign.' },
+    });
+    await notify(affiliate.user.id, NotificationType.APPLICATION, 'Campaign invitation', `You have been invited to join ${campaign.name}.`);
+    invited.push(application);
+  }
+  await audit(current(req).userId, 'CAMPAIGN_AFFILIATES_INVITED', 'Campaign', id, { invitedCount: invited.length });
+  res.status(201).json({ success: true, data: invited });
+});
+
+phase11And12Router.post('/affiliates/applications/:id/respond-to-invitation', ...affiliateOnly, async (req, res) => {
+  const { id } = idParams.parse(req.params);
+  const { decision } = z.object({ decision: z.enum(['ACCEPTED', 'DECLINED']) }).parse(req.body);
+  const affiliate = await affiliateForUser(current(req).userId);
+  const application = await prisma.campaignApplication.findFirst({ where: { id, affiliateId: affiliate.id, status: ApplicationStatus.INVITED }, include: { campaign: true } });
+  if (!application || application.campaign.access !== CampaignAccess.INVITATION || application.campaign.status !== CampaignStatus.APPROVED) throw new HttpError(404, 'Campaign invitation not found');
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.campaignApplication.update({ where: { id }, data: { status: decision === 'ACCEPTED' ? ApplicationStatus.APPROVED : ApplicationStatus.REJECTED, reviewedAt: new Date() } });
+    if (decision === 'ACCEPTED') {
+      await tx.referral.upsert({ where: { campaignId_affiliateId: { campaignId: application.campaignId, affiliateId: affiliate.id } }, update: {}, create: { campaignId: application.campaignId, affiliateId: affiliate.id, code: crypto.randomBytes(12).toString('base64url') } });
+      if (application.campaign.compensationModel !== CompensationModel.PERFORMANCE && application.campaign.fixedFeeAmount) {
+        await tx.creatorPayment.upsert({ where: { campaignId_affiliateId: { campaignId: application.campaignId, affiliateId: affiliate.id } }, update: {}, create: { campaignId: application.campaignId, affiliateId: affiliate.id, amount: application.campaign.fixedFeeAmount, currency: application.campaign.currency } });
+      }
+      await tx.businessAffiliateRecord.upsert({ where: { businessId_affiliateId: { businessId: application.campaign.businessId, affiliateId: affiliate.id } }, update: { stage: 'PARTNER' }, create: { businessId: application.campaign.businessId, affiliateId: affiliate.id, stage: 'PARTNER' } });
+    }
+    return updated;
+  });
+  const campaignBusiness = await prisma.businessProfile.findUnique({ where: { id: application.campaign.businessId }, select: { userId: true } });
+  if (campaignBusiness) await notify(campaignBusiness.userId, NotificationType.APPLICATION, 'Campaign invitation response', 'An affiliate responded to your campaign invitation.');
+  await audit(current(req).userId, `CAMPAIGN_INVITATION_${decision}`, 'CampaignApplication', id);
+  res.json({ success: true, data: result });
+});
+
+// -----------------------------------------------------------------------------
+// Administrative commissions and audit trail.
+// -----------------------------------------------------------------------------
+phase11And12Router.get('/admin/commissions', ...adminOnly, async (req, res) => {
+  const query = pageQuery.extend({ status: z.enum(['PENDING', 'AVAILABLE', 'REVERSED']).optional(), currency: z.string().length(3).optional(), campaignId: z.string().optional(), affiliateId: z.string().optional() }).parse(req.query);
+  const where = { ...(query.status ? { status: query.status } : {}), ...(query.currency ? { currency: query.currency.toUpperCase() } : {}), ...(query.campaignId ? { campaignId: query.campaignId } : {}), ...(query.affiliateId ? { affiliateId: query.affiliateId } : {}) };
+  const [data, total, totals] = await Promise.all([
+    prisma.commission.findMany({ where, include: { campaign: { select: { id: true, name: true, business: { select: { id: true, name: true } } } }, affiliate: { include: { user: { select: { id: true, fullName: true, email: true } } } }, conversion: { select: { id: true, externalReference: true, amount: true, currency: true, status: true, convertedAt: true } } }, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.commission.count({ where }),
+    prisma.commission.groupBy({ by: ['currency', 'status'], where, _sum: { commissionAmount: true }, _count: { _all: true } }),
+  ]);
+  res.json({ success: true, data, meta: { page: query.page, limit: query.limit, total, pages: Math.ceil(total / query.limit), totalsByCurrencyAndStatus: totals.map((row) => ({ currency: row.currency, status: row.status, amount: Number(row._sum.commissionAmount ?? 0), count: row._count._all })) } });
+});
+
+phase11And12Router.get('/admin/audit-logs', ...adminOnly, async (req, res) => {
+  const query = pageQuery.extend({ actorId: z.string().optional(), action: z.string().max(100).optional(), entityType: z.string().max(100).optional(), entityId: z.string().optional(), from: z.coerce.date().optional(), to: z.coerce.date().optional() }).parse(req.query);
+  if (query.from && query.to && query.from > query.to) throw new HttpError(400, 'from must be earlier than or equal to to');
+  const where = {
+    ...(query.actorId ? { actorId: query.actorId } : {}), ...(query.action ? { action: { contains: query.action, mode: 'insensitive' as const } } : {}),
+    ...(query.entityType ? { entityType: query.entityType } : {}), ...(query.entityId ? { entityId: query.entityId } : {}),
+    ...(query.from || query.to ? { createdAt: { ...(query.from ? { gte: query.from } : {}), ...(query.to ? { lte: query.to } : {}) } } : {}),
+  };
+  const [data, total] = await Promise.all([
+    prisma.auditLog.findMany({ where, include: { actor: { select: { id: true, fullName: true, email: true, role: true } } }, orderBy: { createdAt: 'desc' }, skip: (query.page - 1) * query.limit, take: query.limit }),
+    prisma.auditLog.count({ where }),
+  ]);
+  res.json({ success: true, data, meta: { page: query.page, limit: query.limit, total, pages: Math.ceil(total / query.limit) } });
 });
